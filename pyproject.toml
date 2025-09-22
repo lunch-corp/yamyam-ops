@@ -1,0 +1,31 @@
+[project]
+name = "yamyam-ops"
+version = "0.1.0"
+description = "MLOps system for yamyam-lab"
+authors = [{name = "Lunchcorp", email = "rocky@lunchcorp.com"}]
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.0.0",
+    "pandera>=0.17.0",
+    "psycopg2-binary>=2.9.0",
+    "sqlalchemy>=2.0.0",
+    "google-api-python-client>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "tqdm>=4.65.0",
+    "scikit-learn>=1.3.0",
+    "numpy>=1.24.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest==8.3.3",
+    "pytest-cov==6.0.0",
+    "ruff==0.9.9",
+    "pre-commit>=4.0,<5.0",
+]
