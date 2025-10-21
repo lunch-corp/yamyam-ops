@@ -62,7 +62,7 @@ app.add_middleware(
 
 # API 라우터 등록
 app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(upload.router, prefix="/upload", tags=["file-upload"])
+app.include_router(upload.router, prefix="/upload")
 
 # TODO: 부분적으로 완성된 API들 (임시 비활성화)
 # app.include_router(items.router, prefix="/items", tags=["items"])

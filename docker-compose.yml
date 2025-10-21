@@ -22,9 +22,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-           volumes:
-             - ./fastapi:/app
-             - ./fastapi/firebase-service-account-key.json:/app/firebase-key.json
+    volumes:
+      - ./fastapi:/app
+      - ./fastapi/firebase-service-account-key.json:/app/firebase-key.json
 
   postgres:
     image: postgres:15
