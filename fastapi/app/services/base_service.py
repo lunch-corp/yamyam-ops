@@ -113,7 +113,7 @@ class BaseService(ABC, Generic[CreateSchema, UpdateSchema, ResponseSchema]):
 
         query = f"""
             UPDATE {self.table_name} 
-            SET {', '.join(update_fields)}, updated_at = CURRENT_TIMESTAMP
+            SET {", ".join(update_fields)}, updated_at = CURRENT_TIMESTAMP
             WHERE {where_field} = %s
             RETURNING *
         """

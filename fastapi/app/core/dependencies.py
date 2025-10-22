@@ -50,4 +50,3 @@ def get_optional_firebase_uid(
     """선택적 Firebase UID (토큰이 없어도 허용)"""
     user = get_optional_firebase_user(credentials)
     return user.get("uid") if user else None
-
