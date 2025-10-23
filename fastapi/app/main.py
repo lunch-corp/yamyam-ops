@@ -1,15 +1,20 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-from .api.v1 import (  # item_kakao_mappings,; items,; kakao_diners,; kakao_reviewers,; kakao_reviews,; recommend,; reviews,
+from app.api.v1 import (
+    auth,
+    items,
+    kakao_diners,
+    kakao_reviewers,
+    kakao_reviews,
+    reviews,
     upload,
     users,
 )
-from .core.config import settings
-from .core.db import db
+from app.core.config import settings
+from app.core.db import db
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -61,25 +66,18 @@ app.add_middleware(
 )
 
 # API 라우터 등록
+app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(items.router, prefix="/items", tags=["items"])
+app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 app.include_router(upload.router, prefix="/upload")
-
-# TODO: 부분적으로 완성된 API들 (임시 비활성화)
-# app.include_router(items.router, prefix="/items", tags=["items"])
-# app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
-# app.include_router(recommend.router, prefix="/recommend", tags=["recommendations"])
-
-# TODO: 미완성된 API들 (임시 비활성화)
-# app.include_router(kakao_diners.router, prefix="/kakao/diners", tags=["kakao-diners"])
-# app.include_router(
-#     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
-# )
-# app.include_router(
-#     kakao_reviews.router, prefix="/kakao/reviews", tags=["kakao-reviews"]
-# )
-# app.include_router(
-#     item_kakao_mappings.router, prefix="/mappings", tags=["item-kakao-mappings"]
-# )
+app.include_router(kakao_diners.router, prefix="/kakao/diners", tags=["kakao-diners"])
+app.include_router(
+    kakao_reviews.router, prefix="/kakao/reviews", tags=["kakao-reviews"]
+)
+app.include_router(
+    kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
+)
 
 
 @app.get("/")
@@ -111,13 +109,6 @@ def get_info():
             "upload": "/upload",
             "docs": "/docs",
             "health": "/health",
-            # "items": "/items",  # 임시 비활성화
-            # "reviews": "/reviews",  # 임시 비활성화
-            # "recommendations": "/recommend",  # 임시 비활성화
-            # "kakao_diners": "/kakao/diners",  # 임시 비활성화
-            # "kakao_reviewers": "/kakao/reviewers",  # 임시 비활성화
-            # "kakao_reviews": "/kakao/reviews",  # 임시 비활성화
-            # "mappings": "/mappings",  # 임시 비활성화
         },
     }
 

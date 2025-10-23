@@ -4,16 +4,22 @@
 
 from typing import List, Optional
 
-from fastapi import HTTPException, status
-
-from ..core.db import db
-from ..db.queries import basic_queries
-from ..schemas.kakao_reviewer import (
+from app.core.db import db
+from app.database.kakao_queries import (
+    CHECK_KAKAO_REVIEWER_EXISTS,
+    DELETE_KAKAO_REVIEWER_BY_USER_ID,
+    GET_ALL_KAKAO_REVIEWERS,
+    GET_KAKAO_REVIEWER_BY_USER_ID,
+    INSERT_KAKAO_REVIEWER,
+    UPDATE_KAKAO_REVIEWER_BY_USER_ID,
+)
+from app.schemas.kakao_reviewer import (
     KakaoReviewerCreate,
     KakaoReviewerResponse,
     KakaoReviewerUpdate,
 )
-from .base_service import BaseService
+from app.services.base_service import BaseService
+from fastapi import HTTPException, status
 
 
 class KakaoReviewerService(
@@ -32,16 +38,7 @@ class KakaoReviewerService(
                 reviewer_id = self._generate_ulid()
 
                 cursor.execute(
-                    """
-                    INSERT INTO kakao_reviewer (
-                        id, kakao_user_id, nickname, profile_image_url,
-                        review_count, follower_count, following_count, is_verified
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id, kakao_user_id, nickname, profile_image_url,
-                              review_count, follower_count, following_count, is_verified,
-                              crawled_at, updated_at
-                    """,
+                    INSERT_KAKAO_REVIEWER,
                     (
                         reviewer_id,
                         data.kakao_user_id,
@@ -64,14 +61,7 @@ class KakaoReviewerService(
 
     def get_by_id(self, kakao_user_id: str) -> KakaoReviewerResponse:
         """카카오 리뷰어 상세 조회"""
-        query = """
-            SELECT id, kakao_user_id, nickname, profile_image_url,
-                   review_count, follower_count, following_count, is_verified,
-                   crawled_at, updated_at
-            FROM kakao_reviewer WHERE kakao_user_id = %s
-        """
-
-        result = self._execute_query(query, (kakao_user_id,))
+        result = self._execute_query(GET_KAKAO_REVIEWER_BY_USER_ID, (kakao_user_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -88,40 +78,45 @@ class KakaoReviewerService(
         is_verified: Optional[bool] = None,
     ) -> List[KakaoReviewerResponse]:
         """카카오 리뷰어 목록 조회"""
-        fields = [
-            "id",
-            "kakao_user_id",
-            "nickname",
-            "profile_image_url",
-            "review_count",
-            "follower_count",
-            "following_count",
-            "is_verified",
-            "crawled_at",
-            "updated_at",
-        ]
+        # 필터링이 필요한 경우 동적 쿼리 사용, 그렇지 않으면 정적 쿼리 사용
+        if min_review_count is not None or is_verified is not None:
+            fields = [
+                "id",
+                "kakao_user_id",
+                "nickname",
+                "profile_image_url",
+                "review_count",
+                "follower_count",
+                "following_count",
+                "is_verified",
+                "crawled_at",
+                "updated_at",
+            ]
 
-        conditions = []
-        params = []
+            conditions = []
+            params = []
 
-        if min_review_count is not None:
-            conditions.append("review_count >= %s")
-            params.append(min_review_count)
+            if min_review_count is not None:
+                conditions.append("review_count >= %s")
+                params.append(min_review_count)
 
-        if is_verified is not None:
-            conditions.append("is_verified = %s")
-            params.append(is_verified)
+            if is_verified is not None:
+                conditions.append("is_verified = %s")
+                params.append(is_verified)
 
-        query, query_params = self._build_select_query(
-            fields,
-            conditions,
-            order_by="review_count DESC, follower_count DESC",
-            limit=limit,
-            offset=skip,
-        )
+            query, query_params = self._build_select_query(
+                fields,
+                conditions,
+                order_by="review_count DESC, follower_count DESC",
+                limit=limit,
+                offset=skip,
+            )
 
-        params.extend(query_params)
-        results = self._execute_query_all(query, tuple(params))
+            params.extend(query_params)
+            results = self._execute_query_all(query, tuple(params))
+        else:
+            # 필터링이 없는 경우 정적 쿼리 사용
+            results = self._execute_query_all(GET_ALL_KAKAO_REVIEWERS, (limit, skip))
 
         return [self._convert_to_response(row) for row in results]
 
@@ -130,18 +125,14 @@ class KakaoReviewerService(
     ) -> KakaoReviewerResponse:
         """카카오 리뷰어 정보 업데이트"""
         # 리뷰어 존재 확인
-        if not self._check_exists(
-            basic_queries.CHECK_KAKAO_REVIEWER_EXISTS, (kakao_user_id,)
-        ):
+        if not self._check_exists(CHECK_KAKAO_REVIEWER_EXISTS, (kakao_user_id,)):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Kakao reviewer not found",
             )
 
-        # 업데이트할 필드 구성
-        update_fields = []
+        # 업데이트할 필드와 값 구성
         update_values = []
-
         field_mapping = {
             "nickname": data.nickname,
             "profile_image_url": data.profile_image_url,
@@ -153,21 +144,19 @@ class KakaoReviewerService(
 
         for field, value in field_mapping.items():
             if value is not None:
-                update_fields.append(f"{field} = %s")
                 update_values.append(value)
 
-        query, params = self._build_update_query(
-            update_fields, update_values, "kakao_user_id", kakao_user_id
-        )
+        # kakao_user_id를 마지막에 추가
+        update_values.append(kakao_user_id)
 
-        result = self._execute_query(query, params)
+        result = self._execute_query(
+            UPDATE_KAKAO_REVIEWER_BY_USER_ID, tuple(update_values)
+        )
         return self._convert_to_response(result)
 
     def delete(self, kakao_user_id: str) -> dict:
         """카카오 리뷰어 삭제"""
-        query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_field} = %s RETURNING id"
-
-        result = self._execute_query(query, (kakao_user_id,))
+        result = self._execute_query(DELETE_KAKAO_REVIEWER_BY_USER_ID, (kakao_user_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

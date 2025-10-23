@@ -6,10 +6,23 @@ from typing import List
 
 from fastapi import HTTPException, status
 
-from ..core.db import db
-from ..core.firebase_auth import firebase_auth
-from ..schemas.user import UserCreate, UserResponse, UserUpdate
-from .base_service import BaseService
+from app.core.db import db
+from app.core.firebase_auth import firebase_auth
+from app.database.user_queries import (
+    CHECK_USER_EXISTS,
+    CHECK_USER_EXISTS_BY_ID,
+    DELETE_USER_BY_ID,
+    GET_ALL_USERS,
+    GET_USER_BY_FIREBASE_UID,
+    GET_USER_BY_ID,
+    GET_USER_ID_BY_FIREBASE_UID,
+    INSERT_USER,
+    INSERT_USER_FOR_SYNC,
+    UPDATE_USER_BY_FIREBASE_UID,
+    UPDATE_USER_BY_ID,
+)
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.services.base_service import BaseService
 
 
 class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
@@ -23,9 +36,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         try:
             with db.get_cursor() as (cursor, conn):
                 # 중복 사용자 확인 (firebase_uid 기준)
-                if self._check_exists(
-                    "SELECT 1 FROM users WHERE firebase_uid = %s", (data.firebase_uid,)
-                ):
+                if self._check_exists(CHECK_USER_EXISTS, (data.firebase_uid,)):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="이미 등록된 사용자입니다.",
@@ -35,12 +46,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                 user_id = self._generate_ulid()
 
                 cursor.execute(
-                    """
-                    INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING id, firebase_uid, name, email, display_name, photo_url,
-                              created_at, updated_at
-                    """,
+                    INSERT_USER,
                     (
                         user_id,
                         data.firebase_uid,
@@ -61,13 +67,8 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
 
     def get_by_id(self, user_id: str) -> UserResponse:
         """ID(ULID)로 사용자 조회"""
-        query = """
-            SELECT id, firebase_uid, name, email, display_name, photo_url,
-                   created_at, updated_at
-            FROM users WHERE id = %s
-        """
 
-        result = self._execute_query(query, (user_id,))
+        result = self._execute_query(GET_USER_BY_ID, (user_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -78,13 +79,8 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
 
     def get_by_firebase_uid(self, firebase_uid: str) -> UserResponse:
         """Firebase UID로 사용자 조회"""
-        query = """
-            SELECT id, firebase_uid, name, email, display_name, photo_url,
-                   created_at, updated_at
-            FROM users WHERE firebase_uid = %s
-        """
 
-        result = self._execute_query(query, (firebase_uid,))
+        result = self._execute_query(GET_USER_BY_FIREBASE_UID, (firebase_uid,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -97,37 +93,20 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         self, skip: int = 0, limit: int = 100, **filters
     ) -> List[UserResponse]:
         """사용자 목록 조회"""
-        fields = [
-            "id",
-            "firebase_uid",
-            "name",
-            "email",
-            "display_name",
-            "photo_url",
-            "created_at",
-            "updated_at",
-        ]
-
-        query, params = self._build_select_query(
-            fields, order_by="created_at DESC", limit=limit, offset=skip
-        )
-
-        results = self._execute_query_all(query, params)
+        results = self._execute_query_all(GET_ALL_USERS, (limit, skip))
         return [self._convert_to_response(row) for row in results]
 
     def update(self, user_id: str, data: UserUpdate) -> UserResponse:
         """사용자 정보 업데이트 (PostgreSQL DB에서 직접 업데이트)"""
         # 사용자 존재 확인
-        if not self._check_exists("SELECT 1 FROM users WHERE id = %s", (user_id,)):
+        if not self._check_exists(CHECK_USER_EXISTS_BY_ID, (user_id,)):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="사용자를 찾을 수 없습니다.",
             )
 
-        # 업데이트할 필드 구성
-        update_fields = []
+        # 업데이트할 필드와 값 구성
         update_values = []
-
         field_mapping = {
             "name": data.name,
             "email": data.email,
@@ -137,21 +116,17 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
 
         for field, value in field_mapping.items():
             if value is not None:
-                update_fields.append(f"{field} = %s")
                 update_values.append(value)
 
-        query, params = self._build_update_query(
-            update_fields, update_values, "id", user_id
-        )
+        # user_id를 마지막에 추가
+        update_values.append(user_id)
 
-        result = self._execute_query(query, params)
+        result = self._execute_query(UPDATE_USER_BY_ID, tuple(update_values))
         return self._convert_to_response(result)
 
     def delete(self, user_id: str) -> dict:
         """사용자 삭제 (PostgreSQL DB에서 직접 삭제)"""
-        query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_field} = %s RETURNING id"
-
-        result = self._execute_query(query, (user_id,))
+        result = self._execute_query(DELETE_USER_BY_ID, (user_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -172,8 +147,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                 )
 
             # DB에서 기존 사용자 조회
-            query = "SELECT id FROM users WHERE firebase_uid = %s"
-            result = self._execute_query(query, (firebase_uid,))
+            result = self._execute_query(GET_USER_ID_BY_FIREBASE_UID, (firebase_uid,))
 
             if not result:
                 raise HTTPException(
@@ -224,7 +198,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
 
                         # 사용자가 이미 존재하는지 확인
                         cursor.execute(
-                            "SELECT id FROM users WHERE firebase_uid = %s",
+                            GET_USER_ID_BY_FIREBASE_UID,
                             (firebase_uid,),
                         )
                         existing_user = cursor.fetchone()
@@ -232,12 +206,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                         if existing_user:
                             # Firebase 정보로 업데이트
                             cursor.execute(
-                                """
-                                UPDATE users 
-                                SET name = %s, email = %s, display_name = %s, 
-                                    photo_url = %s, updated_at = CURRENT_TIMESTAMP
-                                WHERE firebase_uid = %s
-                                """,
+                                UPDATE_USER_BY_FIREBASE_UID,
                                 (name, email, display_name, photo_url, firebase_uid),
                             )
                             updated_count += 1
@@ -245,10 +214,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                             # 새로운 사용자 생성 (ULID 생성)
                             user_id = self._generate_ulid()
                             cursor.execute(
-                                """
-                                INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url)
-                                VALUES (%s, %s, %s, %s, %s, %s)
-                                """,
+                                INSERT_USER_FOR_SYNC,
                                 (
                                     user_id,
                                     firebase_uid,

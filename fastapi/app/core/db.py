@@ -2,11 +2,10 @@ import logging
 from contextlib import contextmanager
 
 import psycopg2
+from app.core.config import settings
 from psycopg2.extras import RealDictCursor
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from .config import settings
 
 
 class Database:
@@ -53,7 +52,7 @@ class Database:
     def create_tables(self):
         """모든 테이블을 생성합니다 (모델 기반)"""
         try:
-            from ..models.base import Base
+            from app.models.base import Base
 
             Base.metadata.create_all(bind=self.engine)
 

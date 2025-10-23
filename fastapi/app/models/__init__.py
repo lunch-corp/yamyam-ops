@@ -2,7 +2,6 @@
 
 from .base import Base, ULIDMixin
 from .item import Item
-from .item_kakao_mapping import ItemKakaoMapping
 from .kakao_diner import KakaoDiner
 from .kakao_review import KakaoReview
 from .kakao_reviewer import KakaoReviewer
@@ -21,5 +20,4 @@ __all__ = [
     "KakaoDiner",
     "KakaoReviewer",
     "KakaoReview",
-    "ItemKakaoMapping",
 ]

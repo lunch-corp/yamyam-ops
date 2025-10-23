@@ -14,9 +14,10 @@ class Settings(BaseSettings):
     faiss_server_url: str = "http://faiss:7000"
 
     # JWT 설정
-    secret_key: str = "your-secret-key-here"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    jwt_secret_key: str = "your-secret-key-here-change-in-production"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15  # 15분
+    refresh_token_expire_days: int = 7  # 7일
 
     # Firebase 설정
     firebase_project_id: Optional[str] = None

@@ -1,100 +1,15 @@
 """
-CSV 파일 처리 유틸리티
+Kakao 데이터 처리 전용 클래스 - 설정 기반 처리
 """
 
-import logging
-from io import StringIO
+import ast
 from typing import Callable, Dict, List, Tuple
 
 import pandas as pd
 
-logger = logging.getLogger(__name__)
 
-
-class CSVProcessor:
-    """CSV 파일 처리 클래스"""
-
-    @staticmethod
-    def read_csv_file(file_content: bytes, encoding: str = "utf-8") -> pd.DataFrame:
-        """
-        CSV 파일 내용을 DataFrame으로 읽기
-
-        Args:
-            file_content: CSV 파일의 바이트 내용
-            encoding: 파일 인코딩 (기본값: utf-8)
-
-        Returns:
-            pandas DataFrame
-        """
-        try:
-            # 바이트를 문자열로 디코딩
-            text = file_content.decode(encoding)
-            # DataFrame으로 변환
-            df = pd.read_csv(StringIO(text))
-            logger.info(f"CSV 파일 읽기 성공: {len(df)} 행")
-            return df
-        except UnicodeDecodeError:
-            # UTF-8 실패 시 다른 인코딩 시도
-            logger.warning(f"{encoding} 디코딩 실패, cp949로 재시도")
-            text = file_content.decode("cp949")
-            df = pd.read_csv(StringIO(text))
-            logger.info(f"CSV 파일 읽기 성공 (cp949): {len(df)} 행")
-            return df
-
-    @staticmethod
-    def validate_columns(
-        df: pd.DataFrame, required_columns: List[str]
-    ) -> Tuple[bool, str]:
-        """
-        DataFrame의 컬럼 유효성 검사
-
-        Args:
-            df: 검사할 DataFrame
-            required_columns: 필수 컬럼 리스트
-
-        Returns:
-            (성공 여부, 에러 메시지)
-        """
-        missing_columns = set(required_columns) - set(df.columns)
-        if missing_columns:
-            return False, f"필수 컬럼 누락: {', '.join(missing_columns)}"
-        return True, ""
-
-    @staticmethod
-    def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        데이터 정제
-
-        Args:
-            df: 정제할 DataFrame
-
-        Returns:
-            정제된 DataFrame
-        """
-        # NaN을 None으로 변환
-        df = df.where(pd.notnull(df), None)
-        return df
-
-    @staticmethod
-    def batch_data(df: pd.DataFrame, batch_size: int = 1000) -> List[pd.DataFrame]:
-        """
-        DataFrame을 배치로 분할
-
-        Args:
-            df: 분할할 DataFrame
-            batch_size: 배치 크기
-
-        Returns:
-            DataFrame 배치 리스트
-        """
-        batches = []
-        for i in range(0, len(df), batch_size):
-            batches.append(df.iloc[i : i + batch_size])
-        return batches
-
-
-class KakaoCSVProcessor:
-    """Kakao 데이터 CSV 처리 전용 클래스 - 설정 기반 처리"""
+class KakaoDataProcessor:
+    """Kakao 데이터 처리 전용 클래스 - 설정 기반 처리"""
 
     # 각 파일별 처리 설정 (필수 컬럼 + 변환 함수 + SQL 쿼리 정보)
     PROCESSING_CONFIG = {
@@ -230,8 +145,6 @@ class KakaoCSVProcessor:
         if pd.isnull(x) or x is None:
             return None
 
-        import ast
-
         # 문자열 정제
         x_str = str(x).strip()
 
@@ -259,7 +172,7 @@ class KakaoCSVProcessor:
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
         "float_default_zero": lambda x: float(x) if pd.notnull(x) else 0.0,
-        "list_to_comma": lambda x: KakaoCSVProcessor.convert_list_string_to_comma_separated(
+        "list_to_comma": lambda x: KakaoDataProcessor.convert_list_string_to_comma_separated(
             x
         ),
     }

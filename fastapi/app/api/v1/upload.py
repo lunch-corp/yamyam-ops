@@ -5,9 +5,8 @@
 import logging
 from typing import Dict
 
+from app.services.upload_service import UploadService
 from fastapi import APIRouter, File, Query, UploadFile
-
-from ...services.upload_service import UploadService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,7 +15,9 @@ logger = logging.getLogger(__name__)
 upload_service = UploadService()
 
 
-@router.post("/kakao/restaurants/basic", tags=["uploads"])
+@router.post(
+    "/kakao/restaurants/basic", tags=["uploads"], summary="음식점 기본 정보 업로드"
+)
 async def upload_restaurant_basic_data(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
@@ -41,7 +42,9 @@ async def upload_restaurant_basic_data(
     return await upload_service.upload_diner_basic(file, dry_run)
 
 
-@router.post("/kakao/restaurants/categories", tags=["uploads"])
+@router.post(
+    "/kakao/restaurants/categories", tags=["uploads"], summary="음식점 카테고리 업로드"
+)
 async def upload_restaurant_categories(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
@@ -63,7 +66,7 @@ async def upload_restaurant_categories(
     return await upload_service.upload_diner_categories(file, dry_run)
 
 
-@router.post("/kakao/restaurants/menus", tags=["uploads"])
+@router.post("/kakao/restaurants/menus", tags=["uploads"], summary="음식점 메뉴 업로드")
 async def upload_restaurant_menus(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
@@ -83,7 +86,9 @@ async def upload_restaurant_menus(
     return await upload_service.upload_diner_menus(file, dry_run)
 
 
-@router.post("/kakao/restaurants/reviews", tags=["uploads"])
+@router.post(
+    "/kakao/restaurants/reviews", tags=["uploads"], summary="음식점 리뷰 통계 업로드"
+)
 async def upload_restaurant_reviews(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
@@ -104,7 +109,7 @@ async def upload_restaurant_reviews(
     return await upload_service.upload_diner_reviews(file, dry_run)
 
 
-@router.post("/kakao/restaurants/tags", tags=["uploads"])
+@router.post("/kakao/restaurants/tags", tags=["uploads"], summary="음식점 태그 업로드")
 async def upload_restaurant_tags(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
@@ -124,7 +129,9 @@ async def upload_restaurant_tags(
     return await upload_service.upload_diner_tags(file, dry_run)
 
 
-@router.post("/kakao/restaurants/bulk", tags=["uploads"])
+@router.post(
+    "/kakao/restaurants/bulk", tags=["uploads"], summary="음식점 데이터 일괄 업로드"
+)
 async def bulk_upload_restaurant_data(
     diner_basic: UploadFile = File(...),
     diner_categories: UploadFile = File(None),

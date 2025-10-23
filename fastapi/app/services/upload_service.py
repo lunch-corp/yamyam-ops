@@ -5,11 +5,11 @@
 import logging
 from typing import Dict, List, Tuple
 
-from fastapi import HTTPException, UploadFile, status
-
 from app.core.db import db
-from app.db.queries import kakao_queries
-from app.utils.csv_processor import CSVProcessor, KakaoCSVProcessor
+from app.database import kakao_queries
+from app.processors.file_processor import FileProcessor
+from app.processors.kakao_data_processor import KakaoDataProcessor
+from fastapi import HTTPException, UploadFile, status
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,9 @@ class UploadService:
     def _validate_all_configs(self):
         """모든 설정의 일관성 검증"""
         for file_type in self.query_mapping.keys():
-            validation_result = KakaoCSVProcessor.validate_config_consistency(file_type)
+            validation_result = KakaoDataProcessor.validate_config_consistency(
+                file_type
+            )
             if not validation_result["valid"]:
                 logger.warning(
                     f"설정 일관성 문제 ({file_type}): {validation_result['error']}"
@@ -63,18 +65,18 @@ class UploadService:
 
             # 파일 읽기
             content = await file.read()
-            df = CSVProcessor.read_csv_file(content)
+            df = FileProcessor.read_csv(content)
 
-            # 필수 컬럼 검증
-            is_valid, error_msg = CSVProcessor.validate_columns(
-                df, KakaoCSVProcessor.get_required_columns(file_type)
+            # TODO: 크롤러 클리너가 마련되면 빼기
+            is_valid, error_msg = FileProcessor.validate_columns(
+                df, KakaoDataProcessor.get_required_columns(file_type)
             )
             if not is_valid:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg
                 )
 
-            df = CSVProcessor.clean_data(df)
+            df = FileProcessor.clean_data(df)
 
             # Dry run 모드인 경우 실제 DB 작업 없이 검증만 수행
             if dry_run:
@@ -82,9 +84,9 @@ class UploadService:
 
                 # 데이터 처리 검증
                 validation_errors = []
-                for batch in CSVProcessor.batch_data(df, batch_size=1000):
+                for batch in FileProcessor.batch_data(df, batch_size=1000):
                     try:
-                        batch_data = KakaoCSVProcessor.process_file(file_type, batch)
+                        batch_data = KakaoDataProcessor.process_file(file_type, batch)
                         logger.info(f"[DRY RUN] 배치 처리 성공: {len(batch_data)}개")
                     except Exception as e:
                         validation_errors.append(f"배치 처리 실패: {str(e)}")
@@ -105,8 +107,8 @@ class UploadService:
             error_count = 0
 
             with db.get_cursor() as (cursor, conn):
-                for batch in CSVProcessor.batch_data(df, batch_size=1000):
-                    batch_data = KakaoCSVProcessor.process_file(file_type, batch)
+                for batch in FileProcessor.batch_data(df, batch_size=1000):
+                    batch_data = KakaoDataProcessor.process_file(file_type, batch)
                     try:
                         cursor.executemany(self.query_mapping[file_type], batch_data)
                         conn.commit()
@@ -177,11 +179,13 @@ class UploadService:
             query: 해당 파일 타입에 사용할 SQL 쿼리
         """
         # PROCESSING_CONFIG에 추가
-        KakaoCSVProcessor.add_new_file_type(file_type, required_columns, field_mappings)
+        KakaoDataProcessor.add_new_file_type(
+            file_type, required_columns, field_mappings
+        )
 
         # PROCESSING_CONFIG에 sql_fields와 query_name 추가
-        KakaoCSVProcessor.PROCESSING_CONFIG[file_type]["sql_fields"] = sql_fields
-        KakaoCSVProcessor.PROCESSING_CONFIG[file_type]["query_name"] = (
+        KakaoDataProcessor.PROCESSING_CONFIG[file_type]["sql_fields"] = sql_fields
+        KakaoDataProcessor.PROCESSING_CONFIG[file_type]["query_name"] = (
             f"{file_type.upper()}_QUERY"
         )
 
@@ -189,7 +193,7 @@ class UploadService:
         self.query_mapping[file_type] = query
 
         # 설정 일관성 검증
-        validation_result = KakaoCSVProcessor.validate_config_consistency(file_type)
+        validation_result = KakaoDataProcessor.validate_config_consistency(file_type)
         if validation_result["valid"]:
             logger.info(f"새로운 파일 타입 '{file_type}' 추가 완료")
         else:
