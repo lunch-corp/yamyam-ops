@@ -24,9 +24,3 @@ CHECK_KAKAO_REVIEWER_EXISTS = "SELECT id FROM kakao_reviewer WHERE kakao_user_id
 # Kakao Review 관련 쿼리
 CHECK_KAKAO_REVIEW_EXISTS = "SELECT id FROM kakao_review WHERE kakao_review_id = %s"
 CHECK_KAKAO_REVIEW_DUPLICATE = "SELECT id FROM kakao_review WHERE kakao_review_id = %s"
-
-# Item-Kakao Mapping 관련 쿼리
-CHECK_ITEM_KAKAO_MAPPING_EXISTS = "SELECT id FROM item_kakao_mapping WHERE id = %s"
-CHECK_ITEM_KAKAO_MAPPING_DUPLICATE = (
-    "SELECT id FROM item_kakao_mapping WHERE item_id = %s AND kakao_place_id = %s"
-)
