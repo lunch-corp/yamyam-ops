@@ -17,6 +17,7 @@ services:
       ENVIRONMENT: development
       DEBUG: True
       GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-key.json
+      WORKERS: ${WORKERS:-1}
     depends_on:
       postgres:
         condition: service_healthy
