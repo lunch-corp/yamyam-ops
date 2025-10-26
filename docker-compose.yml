@@ -3,9 +3,9 @@ version: "3.9"
 services:
   fastapi:
     build: 
-      context: ./fastapi
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: yamyam-fastapi
+    container_name: yamyam-backend
     ports:
       - "8000:8000"
     environment:
@@ -23,8 +23,8 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./fastapi:/app
-      - ./fastapi/firebase-service-account-key.json:/app/firebase-key.json
+      - ./backend:/app
+      - ./backend/firebase-service-account-key.json:/app/firebase-key.json
 
   postgres:
     image: postgres:15

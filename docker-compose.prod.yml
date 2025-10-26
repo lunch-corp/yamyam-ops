@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  fastapi:
+  backend:
     image: ${DOCKERHUB_USERNAME}/yamyam-ops:${IMAGE_TAG:-latest}
-    container_name: yamyam-fastapi-prod
+    container_name: yamyam-backend-prod
     ports:
       - "8000:8000"
     environment:
