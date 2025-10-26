@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  fastapi:
+  backend:
     build: 
       context: ./backend
       dockerfile: Dockerfile
@@ -25,6 +25,12 @@ services:
     volumes:
       - ./backend:/app
       - ./backend/firebase-service-account-key.json:/app/firebase-key.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   postgres:
     image: postgres:15

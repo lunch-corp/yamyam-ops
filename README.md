@@ -44,7 +44,7 @@ yamyam-ops/
 ├── env.example                  # 환경 변수 예시
 ├── README.md
 │
-├── fastapi/                     # FastAPI 백엔드 소스
+├── backend/                     # FastAPI 백엔드 소스
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── firebase-key.json        # Firebase 서비스 계정 키
@@ -56,34 +56,52 @@ yamyam-ops/
 │       │   ├── dependencies.py  # 의존성 주입
 │       │   └── firebase_auth.py # Firebase 인증
 │       ├── api/v1/              # API 엔드포인트
-│       │   ├── users.py         # 사용자 관리 API
-│       │   ├── upload.py        # 파일 업로드 API
+│       │   ├── auth.py          # 인증 API
 │       │   ├── items.py         # 음식점 관리 API
+│       │   ├── kakao_diners.py  # 카카오 음식점 API
+│       │   ├── kakao_reviews.py # 카카오 리뷰 API
+│       │   ├── kakao_reviewers.py # 카카오 리뷰어 API
 │       │   ├── reviews.py       # 리뷰 관리 API
-│       │   ├── recommend.py     # 추천 시스템 API
-│       │   └── kakao_*.py       # 카카오 데이터 API
-│       ├── schemas/             # Pydantic 스키마
-│       │   ├── user.py
-│       │   ├── item.py
-│       │   ├── review.py
-│       │   └── kakao_*.py
-│       ├── services/            # 비즈니스 로직
-│       │   ├── base_service.py  # 공통 서비스
-│       │   ├── user_service.py  # 사용자 서비스
-│       │   ├── upload_service.py
-│       │   └── recommend_service.py
+│       │   ├── upload.py        # 파일 업로드 API
+│       │   └── users.py         # 사용자 관리 API
+│       ├── database/            # 데이터베이스 쿼리
+│       │   ├── base_queries.py
+│       │   ├── item_queries.py
+│       │   ├── kakao_queries.py
+│       │   ├── review_queries.py
+│       │   └── user_queries.py
 │       ├── models/              # SQLAlchemy 모델
 │       │   ├── base.py
-│       │   ├── user.py
 │       │   ├── item.py
-│       │   └── review.py
-│       ├── db/queries/          # 데이터베이스 쿼리
-│       │   ├── users_queries.py
-│       │   ├── items_queries.py
-│       │   └── reviews_queries.py
+│       │   ├── kakao_diner.py
+│       │   ├── kakao_review.py
+│       │   ├── kakao_reviewer.py
+│       │   ├── preference.py
+│       │   ├── review.py
+│       │   └── user.py
+│       ├── processors/          # 데이터 처리
+│       │   ├── file_processor.py
+│       │   └── kakao_data_processor.py
+│       ├── schemas/             # Pydantic 스키마
+│       │   ├── item_kakao_mapping.py
+│       │   ├── item.py
+│       │   ├── kakao_diner.py
+│       │   ├── kakao_review.py
+│       │   ├── kakao_reviewer.py
+│       │   ├── review.py
+│       │   ├── token.py
+│       │   └── user.py
+│       ├── services/            # 비즈니스 로직
+│       │   ├── base_service.py
+│       │   ├── kakao_diner_service.py
+│       │   ├── kakao_review_service.py
+│       │   ├── kakao_reviewer_service.py
+│       │   ├── token_service.py
+│       │   ├── upload_service.py
+│       │   └── user_service.py
 │       └── utils/               # 유틸리티
-│           ├── ulid_utils.py    # ULID 생성
-│           └── csv_processor.py
+│           ├── jwt_utils.py
+│           └── ulid_utils.py
 │
 ├── postgres/
 │   └── init/
@@ -135,13 +153,13 @@ docker-compose up --build
 docker-compose up -d --build
 
 # 특정 서비스만 시작
-docker-compose up fastapi postgres redis
+docker-compose up backend postgres redis
 
 # 서비스 재시작
-docker-compose restart fastapi
+docker-compose restart backend
 
 # 로그 확인
-docker-compose logs -f fastapi
+docker-compose logs -f backend
 docker-compose logs -f postgres
 docker-compose logs -f redis
 ```
@@ -163,12 +181,12 @@ docker-compose down
 docker-compose down -v
 
 # 특정 서비스만 중지
-docker-compose stop fastapi
+docker-compose stop backend
 
 # 서비스 상태 확인
 docker-compose ps
 
 # 컨테이너 내부 접속
-docker-compose exec fastapi bash
+docker-compose exec backend bash
 docker-compose exec postgres psql -U yamyam -d yamyamdb
 ```
