@@ -49,17 +49,9 @@ app = FastAPI(
 )
 
 # CORS 미들웨어 설정
-allowed_origins = [
-    "http://what2eat.streamlit.app",
-    "https://what2eat.streamlit.app",
-    "http://localhost:8501",
-    "http://localhost:3000",
-    "http://localhost",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

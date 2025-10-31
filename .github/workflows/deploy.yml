@@ -1,0 +1,130 @@
+name: Deploy to Production Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'latest'
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        
+    - name: Create secrets directory on server
+      run: |
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          sudo mkdir -p /etc/yamyam/secrets
+          sudo chown ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /etc/yamyam/secrets
+          sudo chmod 700 /etc/yamyam/secrets
+        "
+        
+    - name: Deploy environment variables
+      run: |
+        # .env 파일 생성
+        cat > .env.tmp << 'EOF'
+        # Docker Hub 설정
+        DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+        IMAGE_TAG=${{ github.event.inputs.image_tag || 'latest' }}
+        
+        # 데이터베이스 설정
+        POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+        POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+        DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}
+        
+        # Redis 설정
+        REDIS_URL=redis://redis:6379
+        
+        # JWT 설정
+        JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+        JWT_ALGORITHM=HS256
+        ACCESS_TOKEN_EXPIRE_MINUTES=30
+        REFRESH_TOKEN_EXPIRE_DAYS=7
+        
+        # 환경 설정
+        ENVIRONMENT=production
+        DEBUG=False
+        LOG_LEVEL=INFO
+        
+        # CORS 설정
+        ALLOWED_ORIGINS=["https://what2eat.streamlit.app", "https://your-domain.com"]
+        EOF
+        
+        # 서버로 .env 파일 전송
+        scp .env.tmp ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/yamyam/secrets/.env
+        rm .env.tmp
+        
+        # 파일 권한 설정
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          sudo chmod 600 /etc/yamyam/secrets/.env
+        "
+        
+    - name: Deploy Firebase service account key
+      run: |
+        # Firebase 키를 임시 파일로 생성
+        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > firebase-key.tmp.json
+        
+        # 서버로 Firebase 키 전송
+        scp firebase-key.tmp.json ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/yamyam/secrets/firebase-key.json
+        rm firebase-key.tmp.json
+        
+        # 파일 권한 설정
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          sudo chmod 600 /etc/yamyam/secrets/firebase-key.json
+        "
+        
+    - name: Deploy application
+      run: |
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          cd ${{ secrets.DEPLOY_PATH || '~/yamyam-ops' }}
+          
+          # Git pull (최신 코드 가져오기)
+          git pull origin main
+          
+          # .env 파일을 프로젝트 루트로 심볼릭 링크
+          ln -sf /etc/yamyam/secrets/.env .env
+          ln -sf /etc/yamyam/secrets/firebase-key.json firebase-key.json
+          
+          # 배포 스크립트 실행
+          bash scripts/deploy.sh ${{ github.event.inputs.image_tag || 'latest' }}
+        "
+        
+    - name: Verify deployment
+      run: |
+        # 헬스체크 대기
+        sleep 30
+        
+        # 헬스체크 수행 (서버 URL 사용)
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          curl -f http://localhost:8000/health || exit 1
+        "
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 배포 성공!"
+        else
+          echo "❌ 배포 실패!"
+          exit 1
+        fi
+
