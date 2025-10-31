@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  fastapi:
+  backend:
     image: ${DOCKERHUB_USERNAME}/yamyam-ops:${IMAGE_TAG:-latest}
-    container_name: yamyam-fastapi-prod
+    container_name: yamyam-backend-prod
     # 외부 직접 노출 제거 - nginx를 통해서만 접근
     expose:
       - "8000"
@@ -58,7 +58,7 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL 인증서 디렉토리
       - nginx_logs:/var/log/nginx
     depends_on:
-      - fastapi
+      - backend
     networks:
       - yamyam-network
     restart: unless-stopped
