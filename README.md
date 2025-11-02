@@ -120,7 +120,7 @@ yamyam-ops/
     ├── upload_seoul_data.py
     └── test_upload.py
 ```
-## 배포 흐름 
+## 배포 흐름
 
 ```
 [개발자] → [GitHub] → [GitHub Actions] → [Docker Hub] → [프로덕션 서버]
@@ -189,4 +189,12 @@ docker-compose ps
 # 컨테이너 내부 접속
 docker-compose exec backend bash
 docker-compose exec postgres psql -U yamyam -d yamyamdb
+```
+
+### 5. Local environment setting
+
+Run following command to sync dependency with `uv.lock`.
+
+```bash
+$ uv sync --all-packages
 ```
