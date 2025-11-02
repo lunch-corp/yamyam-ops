@@ -32,5 +32,5 @@ dev = [
 
 [tool.uv.workspace]
 members = [
-    "fastapi",
+    "backend",
 ]
