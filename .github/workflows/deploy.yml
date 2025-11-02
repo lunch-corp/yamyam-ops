@@ -27,11 +27,12 @@ jobs:
     - name: Add server to known hosts
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        chmod 700 ~/.ssh
+        ssh-keyscan -H -p 10103 ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
         
     - name: Create secrets directory on server
       run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+        ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
           sudo mkdir -p /etc/yamyam/secrets
           sudo chown ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /etc/yamyam/secrets
           sudo chmod 700 /etc/yamyam/secrets
@@ -70,53 +71,112 @@ jobs:
         EOF
         
         # 서버로 .env 파일 전송
-        scp .env.tmp ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/yamyam/secrets/.env
+        scp -P 10103 .env.tmp ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/yamyam/secrets/.env
         rm .env.tmp
         
         # 파일 권한 설정
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+        ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
           sudo chmod 600 /etc/yamyam/secrets/.env
         "
         
-    - name: Deploy Firebase service account key
-      run: |
-        # Firebase 키를 임시 파일로 생성
-        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > firebase-key.tmp.json
-        
-        # 서버로 Firebase 키 전송
-        scp firebase-key.tmp.json ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/yamyam/secrets/firebase-key.json
-        rm firebase-key.tmp.json
-        
-        # 파일 권한 설정
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          sudo chmod 600 /etc/yamyam/secrets/firebase-key.json
-        "
         
     - name: Deploy application
       run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cd ${{ secrets.DEPLOY_PATH || '~/yamyam-ops' }}
+        # 서버에서 DEPLOY_PATH 절대 경로 확인 (~ 확장)
+        DEPLOY_PATH_FULL=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "DEPLOY_PATH=\"${{ secrets.DEPLOY_PATH }}\"; eval echo \"\$DEPLOY_PATH\"")
+        
+        # 서버에서 실행할 스크립트
+        ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "$DEPLOY_PATH_FULL" << 'ENDSSH'
+          DEPLOY_PATH_FULL="$1"
           
-          # Git pull (최신 코드 가져오기)
-          git pull origin main
+          cd "$DEPLOY_PATH_FULL" || {
+            echo "❌ 배포 경로를 찾을 수 없습니다: $DEPLOY_PATH_FULL"
+            exit 1
+          }
+          
+          echo "현재 디렉토리: $(pwd)"
+          echo ""
           
           # .env 파일을 프로젝트 루트로 심볼릭 링크
+          echo "심볼릭 링크 생성 중..."
           ln -sf /etc/yamyam/secrets/.env .env
-          ln -sf /etc/yamyam/secrets/firebase-key.json firebase-key.json
+          echo ""
           
-          # 배포 스크립트 실행
-          bash scripts/deploy.sh ${{ github.event.inputs.image_tag || 'latest' }}
-        "
+          # Docker Compose 명령 확인
+          if command -v docker-compose &> /dev/null; then
+            DOCKER_COMPOSE_CMD="docker-compose"
+          elif docker compose version &> /dev/null 2>&1; then
+            DOCKER_COMPOSE_CMD="docker compose"
+          else
+            echo "❌ docker-compose를 찾을 수 없습니다"
+            exit 1
+          fi
+          
+          echo "Docker Compose 명령: $DOCKER_COMPOSE_CMD"
+          echo ""
+          
+          # 기존 컨테이너 중지
+          echo "기존 컨테이너 중지 중..."
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml down || true
+          echo ""
+          
+          # 최신 이미지 pull
+          echo "최신 이미지 pull 중..."
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml pull
+          echo ""
+          
+          # 컨테이너 시작
+          echo "컨테이너 시작 중..."
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
+          echo ""
+          
+          echo "✅ 배포 완료!"
+        ENDSSH
         
     - name: Verify deployment
       run: |
         # 헬스체크 대기
+        echo "헬스 체크 대기 중... (30초)"
         sleep 30
         
-        # 헬스체크 수행 (서버 URL 사용)
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          curl -f http://localhost:8000/health || exit 1
-        "
+        # 헬스체크 수행 (최대 10회 재시도)
+        MAX_ATTEMPTS=10
+        ATTEMPT=1
+        
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "헬스 체크 시도 $ATTEMPT/$MAX_ATTEMPTS..."
+          
+          if ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "curl -f http://localhost:8000/health > /dev/null 2>&1"; then
+            echo "✅ 헬스 체크 통과!"
+            exit 0
+          fi
+          
+          sleep 10
+          ATTEMPT=$((ATTEMPT + 1))
+        done
+        
+        echo "❌ 헬스 체크 실패"
+        echo "컨테이너 로그 확인:"
+        
+        # 실패 시 컨테이너 로그 확인
+        DEPLOY_PATH_FULL=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "DEPLOY_PATH=\"${{ secrets.DEPLOY_PATH }}\"; eval echo \"\$DEPLOY_PATH\"")
+        ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "$DEPLOY_PATH_FULL" << 'ENDSSH'
+          DEPLOY_PATH_FULL="$1"
+          cd "$DEPLOY_PATH_FULL" || exit 1
+          
+          if command -v docker-compose &> /dev/null; then
+            DOCKER_COMPOSE_CMD="docker-compose"
+          elif docker compose version &> /dev/null 2>&1; then
+            DOCKER_COMPOSE_CMD="docker compose"
+          else
+            echo "docker-compose를 찾을 수 없습니다"
+            exit 1
+          fi
+          
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=50
+        ENDSSH
+        
+        exit 1
         
     - name: Notify deployment status
       if: always()
