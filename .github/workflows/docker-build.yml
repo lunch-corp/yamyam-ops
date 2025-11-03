@@ -5,6 +5,11 @@ on:
     branches: [ main, develop ]
     tags: [ 'v*' ]
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag (leave empty for auto-generated tags)'
+        required: false
+        default: ''
 
 jobs:
   build-and-push:
@@ -23,16 +28,30 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         
+    - name: Set tags
+      id: tags
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.image_tag }}" ]; then
+          echo "type=raw,value=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT.tags
+        else
+          {
+            echo "type=ref,event=branch"
+            echo "type=semver,pattern={{version}}"
+            echo "type=semver,pattern={{major}}.{{minor}}"
+            echo "type=raw,value=latest,enable={{is_default_branch}}"
+          } >> $GITHUB_OUTPUT.tags
+        fi
+        echo "tags<<EOF" >> $GITHUB_OUTPUT
+        cat $GITHUB_OUTPUT.tags >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+      shell: bash
+      
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: ${{ secrets.DOCKERHUB_USERNAME }}/yamyam-ops
-        tags: |
-          type=ref,event=branch
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=raw,value=latest,enable={{is_default_branch}}
+        tags: ${{ steps.tags.outputs.tags }}
           
     - name: Build and push Docker image
       id: build
