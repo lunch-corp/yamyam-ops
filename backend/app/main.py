@@ -1,6 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1 import (
     auth,
     items,
@@ -10,11 +13,10 @@ from app.api.v1 import (
     reviews,
     upload,
     users,
+    vectors,
 )
 from app.core.config import settings
 from app.core.db import db
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -70,6 +72,7 @@ app.include_router(
 app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
 )
+app.include_router(vectors.router, prefix="/vectors", tags=["vectors"])
 
 
 @app.get("/")
@@ -86,6 +89,22 @@ def root():
 def health_check():
     """health check endpoint"""
     return {"status": "healthy", "service": "yamyam-api", "version": "1.0.0"}
+
+
+@app.post("/debug/rebuild-indices")
+def rebuild_all_indices():
+    """인덱스 재구축 (디버그용)"""
+    from app.services.vector_search_service import vector_search_service
+
+    results = {}
+    for entity_type in ["user", "item"]:
+        try:
+            success = vector_search_service.rebuild_index(entity_type)
+            results[entity_type] = "success" if success else "failed"
+        except Exception as e:
+            results[entity_type] = f"error: {str(e)}"
+
+    return {"results": results}
 
 
 @app.get("/info")

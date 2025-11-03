@@ -48,5 +48,6 @@ BEGIN
     ALTER TABLE IF EXISTS kakao_reviewer ALTER COLUMN id SET DEFAULT generate_ulid();
     ALTER TABLE IF EXISTS kakao_review ALTER COLUMN id SET DEFAULT generate_ulid();
     ALTER TABLE IF EXISTS item_kakao_mapping ALTER COLUMN id SET DEFAULT generate_ulid();
+    ALTER TABLE IF EXISTS embedding_vectors ALTER COLUMN id SET DEFAULT generate_ulid();
 END;
 $$ LANGUAGE plpgsql;

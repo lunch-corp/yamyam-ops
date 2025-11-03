@@ -1,6 +1,7 @@
 # 모델 패키지
 
 from .base import Base, ULIDMixin
+from .embedding import EmbeddingVector
 from .item import Item
 from .kakao_diner import KakaoDiner
 from .kakao_review import KakaoReview
@@ -17,6 +18,7 @@ __all__ = [
     "Review",
     "UserPreference",
     "EmbeddingMetadata",
+    "EmbeddingVector",
     "KakaoDiner",
     "KakaoReviewer",
     "KakaoReview",

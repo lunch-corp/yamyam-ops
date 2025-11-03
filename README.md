@@ -25,6 +25,7 @@ yamyam-ops는 Firebase Authentication과 PostgreSQL을 활용한 음식 추천 �
 - **Firebase Authentication**: SNS/이메일 로그인 지원
 - **PostgreSQL**: 사용자 데이터 및 비즈니스 로직 관리
 - **Redis**: 세션 캐시 및 임시 데이터 저장
+- **FAISS**: 벡터 유사도 검색 (User-to-User, Item-to-Item)
 - **Docker Compose**: 개발/배포 환경 통합 관리
 - **FastAPI**: 고성능 비동기 API 서버
 
@@ -34,6 +35,7 @@ yamyam-ops는 Firebase Authentication과 PostgreSQL을 활용한 음식 추천 �
 - **PostgreSQL**: 사용자, 리뷰, 음식점 데이터 저장
 - **Redis**: 세션 캐시, 임시 데이터
 - **Firebase Auth**: 사용자 인증 및 관리
+- **FAISS**: 벡터 데이터베이스 및 유사도 검색
 - **Docker Compose**: 컨테이너 오케스트레이션
 
 ## 프로젝트 구조
@@ -63,7 +65,8 @@ yamyam-ops/
 │       │   ├── kakao_reviewers.py # 카카오 리뷰어 API
 │       │   ├── reviews.py       # 리뷰 관리 API
 │       │   ├── upload.py        # 파일 업로드 API
-│       │   └── users.py         # 사용자 관리 API
+│       │   ├── users.py         # 사용자 관리 API
+│       │   └── vectors.py       # 벡터 검색 API
 │       ├── database/            # 데이터베이스 쿼리
 │       │   ├── base_queries.py
 │       │   ├── item_queries.py
@@ -72,6 +75,7 @@ yamyam-ops/
 │       │   └── user_queries.py
 │       ├── models/              # SQLAlchemy 모델
 │       │   ├── base.py
+│       │   ├── embedding.py     # 임베딩 벡터 모델
 │       │   ├── item.py
 │       │   ├── kakao_diner.py
 │       │   ├── kakao_review.py
@@ -90,7 +94,8 @@ yamyam-ops/
 │       │   ├── kakao_reviewer.py
 │       │   ├── review.py
 │       │   ├── token.py
-│       │   └── user.py
+│       │   ├── user.py
+│       │   └── vector.py        # 벡터 검색 스키마
 │       ├── services/            # 비즈니스 로직
 │       │   ├── base_service.py
 │       │   ├── kakao_diner_service.py
@@ -98,7 +103,8 @@ yamyam-ops/
 │       │   ├── kakao_reviewer_service.py
 │       │   ├── token_service.py
 │       │   ├── upload_service.py
-│       │   └── user_service.py
+│       │   ├── user_service.py
+│       │   └── vector_search_service.py  # FAISS 벡터 검색
 │       └── utils/               # 유틸리티
 │           ├── jwt_utils.py
 │           └── ulid_utils.py
@@ -190,3 +196,79 @@ docker-compose ps
 docker-compose exec backend bash
 docker-compose exec postgres psql -U yamyam -d yamyamdb
 ```
+
+## 벡터 검색 (FAISS) 사용법
+
+### 1. 임베딩 벡터 저장
+
+```bash
+curl -X POST "http://localhost:8000/vectors/embeddings" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "user",
+    "entity_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "embedding_type": "default",
+    "dimension": 128,
+    "vector": [0.1, 0.2, 0.3, ...]  # 128차원 벡터
+  }'
+```
+
+### 2. User-to-User 유사도 검색
+
+```bash
+# 특정 사용자와 유사한 사용자 찾기
+curl -X POST "http://localhost:8000/vectors/similarity/users/USER_ID?k=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 3. Item-to-Item 유사도 검색
+
+```bash
+# 특정 아이템과 유사한 아이템 찾기
+curl -X POST "http://localhost:8000/vectors/similarity/items/ITEM_ID?k=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 4. 인덱스 관리
+
+```bash
+# 인덱스 재구축
+curl -X POST "http://localhost:8000/vectors/indexes/user/rebuild" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# 인덱스 정보 조회
+curl -X GET "http://localhost:8000/vectors/indexes/user/info"
+```
+
+## 벡터 검색 아키텍처
+
+```
+[ML Model] → [Embedding Vector] → [PostgreSQL]
+                                      ↓
+                                   [FAISS Index]
+                                      ↓
+                           [Vector Search Service]
+                                      ↓
+                              [FastAPI Endpoint]
+                                      ↓
+                                  [Client]
+```
+
+### 주요 특징
+
+- **Hybrid Search**: 벡터 유사도와 메타데이터 필터링 결합
+- **Fast Index**: FAISS IndexFlatL2를 사용한 L2 거리 기반 정확 검색
+- **Persistent**: 인덱스 자동 저장/로드
+- **Batch Processing**: 벡터 일괄 추가 및 인덱스 재구축 지원
+
+## API 엔드포인트
+
+### 벡터 검색 API (`/vectors`)
+
+- `POST /vectors/embeddings`: 임베딩 벡터 저장
+- `POST /vectors/similarity/search`: 일반 유사도 검색
+- `POST /vectors/similarity/users/{user_id}`: 사용자 유사도 검색
+- `POST /vectors/similarity/items/{item_id}`: 아이템 유사도 검색
+- `POST /vectors/indexes/{entity_type}/rebuild`: 인덱스 재구축
+- `GET /vectors/indexes/{entity_type}/info`: 인덱스 정보 조회
