@@ -178,8 +178,28 @@ jobs:
         while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
           echo "헬스 체크 시도 $ATTEMPT/$MAX_ATTEMPTS..."
           
-          if ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "curl -f http://localhost:8000/health > /dev/null 2>&1"; then
-            echo "✅ 헬스 체크 통과!"
+          # 방법 1: nginx를 통해 헬스체크 시도 (nginx가 backend로 프록시)
+          echo "→ nginx를 통한 헬스체크 시도..."
+          RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "curl -f -w '\nHTTP Status: %{http_code}' http://localhost/health 2>&1")
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "$RESPONSE"
+            echo "✅ 헬스 체크 통과! (nginx를 통한 접근)"
+            exit 0
+          fi
+          
+          echo "$RESPONSE"
+          echo "nginx를 통한 접근 실패, backend 컨테이너에서 직접 시도..."
+          
+          # 방법 2: backend 컨테이너에서 직접 헬스체크 (fallback)
+          RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "docker exec yamyam-backend-prod curl -f -w '\nHTTP Status: %{http_code}' http://localhost:8000/health 2>&1")
+          EXIT_CODE=$?
+          
+          echo "$RESPONSE"
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ 헬스 체크 통과! (backend 컨테이너 직접 접근)"
             exit 0
           fi
           
@@ -188,9 +208,10 @@ jobs:
         done
         
         echo "❌ 헬스 체크 실패"
-        echo "컨테이너 로그 확인:"
+        echo ""
+        echo "=== 디버깅 정보 수집 ==="
         
-        # 실패 시 컨테이너 로그 확인
+        # 실패 시 컨테이너 상태 및 로그 확인
         DEPLOY_PATH_FULL=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "DEPLOY_PATH=\"${{ secrets.DEPLOY_PATH }}\"; eval echo \"\$DEPLOY_PATH\"")
         ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "$DEPLOY_PATH_FULL" << 'ENDSSH'
           DEPLOY_PATH_FULL="$1"
@@ -205,7 +226,17 @@ jobs:
             exit 1
           fi
           
-          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=50
+          echo ""
+          echo "=== 컨테이너 상태 ==="
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps
+          
+          echo ""
+          echo "=== Backend 컨테이너 로그 (최근 50줄) ==="
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=50 backend
+          
+          echo ""
+          echo "=== Nginx 컨테이너 로그 (최근 30줄) ==="
+          $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=30 nginx
         ENDSSH
         
         exit 1
