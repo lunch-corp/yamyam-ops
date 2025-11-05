@@ -5,8 +5,9 @@
 import logging
 from typing import Dict
 
-from app.services.upload_service import UploadService
 from fastapi import APIRouter, File, Query, UploadFile
+
+from app.services.upload_service import UploadService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

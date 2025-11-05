@@ -1,10 +1,11 @@
 import logging
 from typing import List
 
+from fastapi import APIRouter, Depends
+
 from app.core.dependencies import get_firebase_uid
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.services.user_service import UserService
-from fastapi import APIRouter, Depends
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

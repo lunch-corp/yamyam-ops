@@ -1,6 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1 import (
     auth,
     items,
@@ -13,8 +16,6 @@ from app.api.v1 import (
 )
 from app.core.config import settings
 from app.core.db import db
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)

@@ -4,6 +4,8 @@
 
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from app.core.dependencies import get_current_user_from_token
 from app.schemas.token import (
     FirebaseLoginRequest,
@@ -14,7 +16,6 @@ from app.schemas.token import (
     TokenVerifyResponse,
 )
 from app.services.token_service import token_service
-from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

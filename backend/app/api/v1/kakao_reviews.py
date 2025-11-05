@@ -1,6 +1,8 @@
 import logging
 from typing import List, Optional
 
+from fastapi import APIRouter, Query
+
 from app.schemas.kakao_review import (
     KakaoReviewCreate,
     KakaoReviewResponse,
@@ -8,7 +10,6 @@ from app.schemas.kakao_review import (
     KakaoReviewWithDetails,
 )
 from app.services.kakao_review_service import KakaoReviewService
-from fastapi import APIRouter, Query
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
