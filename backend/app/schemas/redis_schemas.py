@@ -21,12 +21,52 @@ class RedisCreateRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"items": {"1783192": {"diner_ids": ["57812123"]}}, "expire": 3600},
+                # Single user recommendation - candidate diners
                 {
                     "items": {
-                        "1783192": {"diner_ids": ["57812123", "84903251", "23145678"]},
-                        "2894561": {"diner_ids": ["12456789", "98765432"]},
-                        "3145927": {"diner_ids": ["45678901"]},
+                        "user:1783192:candidate_diner_ids": [
+                            "57812123",
+                            "84903251",
+                            "23145678",
+                        ]
+                    },
+                    "expire": 3600,
+                },
+                # Single user recommendation - both candidate and ranked
+                {
+                    "items": {
+                        "user:1783192:candidate_diner_ids": [
+                            "57812123",
+                            "84903251",
+                            "23145678",
+                        ],
+                        "user:1783192:ranked_diner_ids": [
+                            "57812123",
+                            "23145678",
+                            "84903251",
+                        ],
+                    },
+                    "expire": 3600,
+                },
+                # Single diner similarity
+                {
+                    "items": {
+                        "diner:57812123:similar_diner_ids": [
+                            "84903251",
+                            "23145678",
+                            "91234567",
+                        ]
+                    },
+                    "expire": 7200,
+                },
+                # Multiple users and diners
+                {
+                    "items": {
+                        "user:1783192:candidate_diner_ids": ["57812123", "84903251"],
+                        "user:1783192:ranked_diner_ids": ["57812123", "84903251"],
+                        "user:2894561:candidate_diner_ids": ["12456789", "98765432"],
+                        "user:2894561:ranked_diner_ids": ["98765432", "12456789"],
+                        "diner:57812123:similar_diner_ids": ["84903251", "23145678"],
                     },
                     "expire": 3600,
                 },
@@ -41,8 +81,26 @@ class RedisReadRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"keys": ["1783192"]},
-                {"keys": ["1783192", "2894561", "3145927"]},
+                # Read single user's candidate diners
+                {"keys": ["user:1783192:candidate_diner_ids"]},
+                # Read single user's both properties
+                {
+                    "keys": [
+                        "user:1783192:candidate_diner_ids",
+                        "user:1783192:ranked_diner_ids",
+                    ]
+                },
+                # Read single diner similarity
+                {"keys": ["diner:57812123:similar_diner_ids"]},
+                # Read multiple mixed types
+                {
+                    "keys": [
+                        "user:1783192:candidate_diner_ids",
+                        "user:1783192:ranked_diner_ids",
+                        "diner:57812123:similar_diner_ids",
+                        "diner:84903251:similar_diner_ids",
+                    ]
+                },
             ]
         }
     }
@@ -66,21 +124,39 @@ class RedisUpdateRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {
-                    "items": {"1783192": {"diner_ids": ["57812123", "91234567"]}},
-                    "expire": 7200,
-                },
+                # Update user recommendations
                 {
                     "items": {
-                        "1783192": {
-                            "diner_ids": [
-                                "57812123",
-                                "84903251",
-                                "23145678",
-                                "65432109",
-                            ]
-                        },
-                        "2894561": {"diner_ids": ["12456789"]},
+                        "user:1783192:candidate_diner_ids": [
+                            "57812123",
+                            "91234567",
+                            "45678901",
+                        ],
+                        "user:1783192:ranked_diner_ids": [
+                            "91234567",
+                            "57812123",
+                            "45678901",
+                        ],
+                    },
+                    "expire": 7200,
+                },
+                # Update diner similarities
+                {
+                    "items": {
+                        "diner:57812123:similar_diner_ids": [
+                            "84903251",
+                            "65432109",
+                            "11223344",
+                        ]
+                    },
+                    "expire": 7200,
+                },
+                # Update multiple keys
+                {
+                    "items": {
+                        "user:1783192:candidate_diner_ids": ["57812123", "84903251"],
+                        "user:1783192:ranked_diner_ids": ["84903251", "57812123"],
+                        "diner:57812123:similar_diner_ids": ["84903251", "23145678"],
                     },
                     "expire": 7200,
                 },
@@ -95,8 +171,26 @@ class RedisDeleteRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"keys": ["1783192"]},
-                {"keys": ["1783192", "2894561", "3145927"]},
+                # Delete single user property
+                {"keys": ["user:1783192:candidate_diner_ids"]},
+                # Delete all user properties
+                {
+                    "keys": [
+                        "user:1783192:candidate_diner_ids",
+                        "user:1783192:ranked_diner_ids",
+                    ]
+                },
+                # Delete single diner similarity
+                {"keys": ["diner:57812123:similar_diner_ids"]},
+                # Delete multiple mixed types
+                {
+                    "keys": [
+                        "user:1783192:candidate_diner_ids",
+                        "user:1783192:ranked_diner_ids",
+                        "diner:57812123:similar_diner_ids",
+                        "diner:84903251:similar_diner_ids",
+                    ]
+                },
             ]
         }
     }
@@ -113,15 +207,19 @@ class RedisResponse(BaseModel):
             "examples": [
                 {
                     "success": True,
-                    "message": "Operation completed successfully",
-                    "data": {"1783192": True},
+                    "message": "Created 1 key(s)",
+                    "data": {"user:1783192:candidate_diner_ids": True},
                     "stats": {"total": 1, "succeeded": 1, "failed": 0},
                 },
                 {
                     "success": True,
-                    "message": "Operation completed with partial success",
-                    "data": {"1783192": True, "2894561": True, "3145927": False},
-                    "stats": {"total": 3, "succeeded": 2, "failed": 1},
+                    "message": "Created 3 key(s)",
+                    "data": {
+                        "user:1783192:candidate_diner_ids": True,
+                        "user:1783192:ranked_diner_ids": True,
+                        "diner:57812123:similar_diner_ids": True,
+                    },
+                    "stats": {"total": 3, "succeeded": 3, "failed": 0},
                 },
             ]
         }
@@ -141,19 +239,22 @@ class RedisReadResponse(BaseModel):
             "examples": [
                 {
                     "success": True,
-                    "message": "Read completed successfully",
-                    "data": {"1783192": {"diner_ids": ["57812123", "84903251"]}},
+                    "message": "Read 1 key(s)",
+                    "data": {
+                        "user:1783192:candidate_diner_ids": ["57812123", "84903251"]
+                    },
                     "stats": {"total": 1, "found": 1, "not_found": 0},
                 },
                 {
                     "success": True,
-                    "message": "Read completed with partial results",
+                    "message": "Read 3/4 key(s)",
                     "data": {
-                        "1783192": {"diner_ids": ["57812123", "84903251"]},
-                        "2894561": {"diner_ids": ["12456789"]},
-                        "3145927": None,
+                        "user:1783192:candidate_diner_ids": ["57812123", "84903251"],
+                        "user:1783192:ranked_diner_ids": ["57812123", "84903251"],
+                        "diner:57812123:similar_diner_ids": ["84903251", "23145678"],
+                        "diner:99999999:similar_diner_ids": None,
                     },
-                    "stats": {"total": 3, "found": 2, "not_found": 1},
+                    "stats": {"total": 4, "found": 3, "not_found": 1},
                 },
             ]
         }
