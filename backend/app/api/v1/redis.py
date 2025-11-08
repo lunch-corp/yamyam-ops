@@ -51,7 +51,7 @@ async def create_redis_keys(request: RedisCreateRequest):
         )
 
 
-@router.get(
+@router.post(
     "/read",
     response_model=RedisReadResponse,
     summary="Read Redis Keys",
