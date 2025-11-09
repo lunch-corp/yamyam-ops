@@ -10,6 +10,7 @@ import numpy as np
 from app.schemas.vector_db import (
     IndexCreateRequest,
     IndexCreateResponse,
+    IndexUpdateRequest,
     SimilarUsersResponse,
 )
 
@@ -28,6 +29,22 @@ class VectorDBService:
 
     def __init__(self) -> None:
         self._artifacts: _IndexArtifacts | None = None
+
+    def _normalize_embeddings(
+        self, embeddings: np.ndarray, user_ids: List[str]
+    ) -> np.ndarray:
+        """벡터 정규화 (L2 norm)"""
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+
+        # 영벡터 방지
+        zero_norm_mask = norms.squeeze() == 0
+        if np.any(zero_norm_mask):
+            raise ValueError(
+                f"Zero vectors are not allowed. Found zero vectors for users: "
+                f"{[user_ids[i] for i in np.where(zero_norm_mask)[0]]}"
+            )
+
+        return embeddings / norms
 
     def build_index(self, request: IndexCreateRequest) -> IndexCreateResponse:
         """벡터 데이터로부터 FAISS 인덱스 생성"""
@@ -53,16 +70,7 @@ class VectorDBService:
         )
 
         # 정규화
-        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-        # 영벡터 방지
-        zero_norm_mask = norms.squeeze() == 0
-        if np.any(zero_norm_mask):
-            raise ValueError(
-                f"Zero vectors are not allowed. Found zero vectors for users: "
-                f"{[user_ids[i] for i in np.where(zero_norm_mask)[0]]}"
-            )
-
-        embeddings = embeddings / norms
+        embeddings = self._normalize_embeddings(embeddings, user_ids)
 
         # FAISS 인덱스 생성 및 추가
         index = faiss.IndexFlatIP(vector_dim)
@@ -123,3 +131,54 @@ class VectorDBService:
                 "FAISS index is not initialized. call build_index first."
             )
         return self._artifacts
+
+    def update_index(self, request: IndexUpdateRequest) -> IndexCreateResponse:
+        """
+        Add new vectors to existing FAISS index or create if not exists.
+        """
+        if not request.vectors:
+            raise ValueError("vectors cannot be empty")
+
+        # Extract user IDs and embeddings from UserVector objects
+        user_ids = [uv.user_id for uv in request.vectors]
+        vectors = np.array([uv.embedding for uv in request.vectors], dtype=np.float32)
+
+        if vectors.ndim != 2:
+            raise ValueError("Vectors must be 2-dimensional")
+
+        # 정규화
+        vectors = self._normalize_embeddings(vectors, user_ids)
+
+        # If index exists, append; otherwise create new
+        dimension = vectors.shape[1]
+        if self._artifacts is not None:
+            if dimension != self._artifacts.index.d:
+                raise ValueError(
+                    f"Vector dimension {dimension} does not match index dimension {self._artifacts.index.d}"
+                )
+            self._artifacts.index.add(vectors)
+            self._artifacts.user_ids.extend(user_ids)
+            # Update embeddings by concatenating
+            self._artifacts.embeddings = np.vstack(
+                [self._artifacts.embeddings, vectors]
+            )
+        else:
+            # Create new index if doesn't exist
+            index = faiss.IndexFlatIP(dimension)
+            index.add(vectors)
+            self._artifacts = _IndexArtifacts(
+                index=index,
+                user_ids=user_ids,
+                embeddings=vectors,
+            )
+
+        logger.info(
+            "Updated FAISS index. Total users: %s, vector dimension: %s",
+            len(user_ids),
+            dimension,
+        )
+
+        return IndexCreateResponse(
+            num_users=len(user_ids),
+            vector_dimension=dimension,
+        )

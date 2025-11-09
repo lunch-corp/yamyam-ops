@@ -19,12 +19,40 @@ class IndexCreateRequest(BaseModel):
         ..., min_length=1, description="인덱싱할 사용자 벡터 리스트"
     )
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "vectors": [
+                    {"user_id": "user_123", "embedding": [0.1, 0.2, 0.3]},
+                    {"user_id": "user_456", "embedding": [0.4, 0.5, 0.6]},
+                ]
+            }
+        }
+
 
 class IndexCreateResponse(BaseModel):
     """벡터 인덱스 생성 응답"""
 
     num_users: int = Field(..., description="인덱싱된 사용자 수")
     vector_dimension: int = Field(..., description="벡터 차원")
+
+
+class IndexUpdateRequest(BaseModel):
+    """Request model for updating/appending vectors to existing FAISS index"""
+
+    vectors: List[UserVector] = Field(
+        ..., min_length=1, description="추가할 사용자 벡터 리스트"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "vectors": [
+                    {"user_id": "user_123", "embedding": [0.1, 0.2, 0.3]},
+                    {"user_id": "user_456", "embedding": [0.4, 0.5, 0.6]},
+                ]
+            }
+        }
 
 
 class SimilarUsersRequest(BaseModel):
