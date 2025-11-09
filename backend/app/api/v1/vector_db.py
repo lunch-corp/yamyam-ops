@@ -3,9 +3,8 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.vector_db import (
-    IndexCreateRequest,
-    IndexCreateResponse,
-    IndexUpdateRequest,
+    StoreVectorsRequest,
+    StoreVectorsResponse,
     SimilarUsersRequest,
     SimilarUsersResponse,
 )
@@ -18,39 +17,17 @@ vector_db_service = VectorDBService()
 
 
 @router.post(
-    "/create",
-    response_model=IndexCreateResponse,
-    summary="FAISS 벡터 인덱스 생성",
+    "/store",
+    response_model=StoreVectorsResponse,
+    summary="FAISS 벡터 저장",
 )
-def create_index(request: IndexCreateRequest) -> IndexCreateResponse:
-    """
-    사용자 벡터 데이터를 받아서 FAISS 인덱스를 생성합니다.
-    UserCF에서 계산된 임베딩 벡터를 인덱싱할 수 있습니다.
-    """
-    try:
-        response = vector_db_service.build_index(request)
-        logger.info(
-            "Created FAISS index with %s users and vector dimension %s",
-            response.num_users,
-            response.vector_dimension,
-        )
-        return response
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post(
-    "/update",
-    response_model=IndexCreateResponse,
-    summary="FAISS 벡터 인덱스 업데이트",
-)
-def update_index(request: IndexUpdateRequest) -> IndexCreateResponse:
+def store_vectors(request: StoreVectorsRequest) -> StoreVectorsResponse:
     """
     기존 FAISS 인덱스에 새로운 사용자 벡터 데이터를 추가합니다.
     인덱스가 존재하지 않으면 새로 생성합니다.
     """
     try:
-        response = vector_db_service.update_index(request)
+        response = vector_db_service.store_vectors(request)
         logger.info(
             "Updated FAISS index. Total users: %s, vector dimension: %s",
             response.num_users,
