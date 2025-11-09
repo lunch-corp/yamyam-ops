@@ -39,10 +39,10 @@ def rebuild_dummy_index(config: DummyIndexConfig) -> DummyIndexStatus:
 )
 def get_similar_users(payload: SimilarUsersRequest) -> SimilarUsersResponse:
     """
-    더미 FAISS 인덱스에서 입력 사용자와 유사한 사용자들을 검색합니다.
-    존재하지 않는 사용자 ID가 주어진 경우 404를 반환합니다.
+    입력받은 사용자 점수 벡터를 기반으로 FAISS 인덱스에서 유사한 사용자들을 검색합니다.
+    점수 벡터의 차원이 인덱스 차원과 일치하지 않으면 400을 반환합니다.
     """
     try:
-        return cf_service.get_similar_users(payload.user_id, payload.top_k)
+        return cf_service.get_similar_users(payload.scores, payload.top_k)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

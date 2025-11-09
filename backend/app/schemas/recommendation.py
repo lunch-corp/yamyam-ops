@@ -21,8 +21,10 @@ class DummyIndexStatus(BaseModel):
 
 
 class SimilarUsersRequest(BaseModel):
-    user_id: str = Field(
-        ..., min_length=1, description="유사도를 계산할 대상 사용자 ID"
+    scores: List[float] = Field(
+        ...,
+        min_length=1,
+        description="사용자가 각 식당(다이너)에 매긴 점수 리스트",
     )
     top_k: int = Field(default=5, ge=1, le=50, description="반환할 유사 사용자 수")
 

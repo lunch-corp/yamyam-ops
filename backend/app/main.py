@@ -73,7 +73,7 @@ app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
 )
 app.include_router(
-    recommendations.router, prefix="/recommendations", tags=["recommendations", "faiss"]
+    recommendations.router, prefix="/recommendations", tags=["recommendations"]
 )
 
 
