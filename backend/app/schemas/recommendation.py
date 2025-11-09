@@ -6,13 +6,11 @@ from pydantic import BaseModel, Field
 
 
 class DummyIndexConfig(BaseModel):
-    num_users: int = Field(
-        default=10, ge=2, le=10_000, description="생성할 더미 사용자 수"
-    )
+    num_users: int = Field(..., ge=2, le=10_000, description="생성할 더미 사용자 수")
     num_diners: int = Field(
-        default=20, ge=2, le=1_000, description="사용자-다이너 상호작용 벡터 차원"
+        ..., ge=2, le=1_000, description="사용자-다이너 상호작용 벡터 차원"
     )
-    random_seed: int = Field(default=42, description="재현 가능성을 위한 시드 값")
+    random_seed: int = Field(..., description="재현 가능성을 위한 시드 값")
 
 
 class DummyIndexStatus(BaseModel):
@@ -21,7 +19,10 @@ class DummyIndexStatus(BaseModel):
 
 
 class SimilarUsersRequest(BaseModel):
-    scores: List[float] = Field(
+    user_id: str = Field(
+        ..., min_length=1, description="유사도를 계산할 대상 사용자 ID"
+    )
+    diner_scores: List[float] = Field(
         ...,
         min_length=1,
         description="사용자가 각 식당(다이너)에 매긴 점수 리스트",
