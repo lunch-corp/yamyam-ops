@@ -10,6 +10,7 @@ from app.api.v1 import (
     kakao_diners,
     kakao_reviewers,
     kakao_reviews,
+    recommendations,
     reviews,
     upload,
     users,
@@ -70,6 +71,9 @@ app.include_router(
 )
 app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
+)
+app.include_router(
+    recommendations.router, prefix="/recommendations", tags=["recommendations", "faiss"]
 )
 
 
