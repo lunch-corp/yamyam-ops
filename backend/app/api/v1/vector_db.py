@@ -28,10 +28,13 @@ def store_vectors(request: StoreVectorsRequest) -> StoreVectorsResponse:
     """
     try:
         response = vector_db_service.store_vectors(
-            vectors=request.vectors, normalize=request.normalize
+            vector_type=request.vector_type,
+            vectors=request.vectors,
+            normalize=request.normalize,
         )
         logger.info(
-            "Updated FAISS index. Total ids: %s, vector dimension: %s",
+            "Updated FAISS index for %s. Total ids: %s, vector dimension: %s",
+            request.vector_type.value,
             response.num_vectors,
             response.vector_dimension,
         )
@@ -48,7 +51,7 @@ def get_similar(payload: SimilarRequest) -> SimilarResponse:
     """
     try:
         return vector_db_service.get_similar(
-            payload.query_id, payload.query_vector, payload.top_k
+            payload.vector_type, payload.query_id, payload.query_vector, payload.top_k
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

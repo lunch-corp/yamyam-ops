@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import List
 
 from pydantic import BaseModel, Field
+
+
+class VectorType(str, Enum):
+    """벡터 타입 열거형"""
+
+    USER_CF_VEC = "user_cf_vec"
+    USER_N2V_VEC = "user_n2v_vec"
+    DINER_N2V_VEC = "diner_n2v_vec"
 
 
 class Vector(BaseModel):
@@ -17,6 +26,9 @@ class Vector(BaseModel):
 class StoreVectorsRequest(BaseModel):
     """Request model for storing vectors to FAISS index"""
 
+    vector_type: VectorType = Field(
+        ..., description="벡터 타입 (user_cf_vec, user_n2v_vec, diner_n2v_vec)"
+    )
     vectors: List[Vector] = Field(..., min_length=1, description="추가할 벡터 리스트")
     normalize: bool = Field(
         default=True, description="벡터를 정규화할지 여부 (기본값: True)"
@@ -25,6 +37,7 @@ class StoreVectorsRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "vector_type": "user_cf_vec",
                 "vectors": [
                     {"id": "user_123", "embedding": [0.1, 0.2, 0.3]},
                     {"id": "user_456", "embedding": [0.4, 0.5, 0.6]},
@@ -42,6 +55,9 @@ class StoreVectorsResponse(BaseModel):
 
 
 class SimilarRequest(BaseModel):
+    vector_type: VectorType = Field(
+        ..., description="검색할 벡터 타입 (user_cf_vec, user_n2v_vec, diner_n2v_vec)"
+    )
     query_id: str = Field(..., min_length=1, description="유사도를 계산할 쿼리 ID")
     query_vector: List[float] = Field(
         ...,
@@ -53,6 +69,7 @@ class SimilarRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "vector_type": "user_cf_vec",
                 "query_id": "user_999",
                 "query_vector": [0.1, 0.3, 0.7],
                 "top_k": 5,

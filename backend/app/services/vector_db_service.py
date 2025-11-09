@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 import faiss
 import numpy as np
 
 from app.schemas.vector_db import (
     Vector,
+    VectorType,
     StoreVectorsResponse,
     SimilarResponse,
 )
@@ -27,13 +28,17 @@ class VectorDBService:
     """FAISS 벡터 데이터베이스 서비스"""
 
     def __init__(self) -> None:
-        self._artifacts: _IndexArtifacts | None = None
+        self._artifacts: Dict[VectorType, _IndexArtifacts] = {}
 
     def get_similar(
-        self, query_id: str, diner_scores: List[float], top_k: int
+        self,
+        vector_type: VectorType,
+        query_id: str,
+        diner_scores: List[float],
+        top_k: int,
     ) -> SimilarResponse:
         """입력받은 ID와 점수 벡터를 기반으로 FAISS 인덱스에서 내적 기반 유사 벡터 검색"""
-        artifacts = self._ensure_index()
+        artifacts = self._ensure_index(vector_type)
 
         # 입력 점수를 numpy 배열로 변환
         query_scores = np.array(diner_scores, dtype=np.float32)
@@ -65,7 +70,7 @@ class VectorDBService:
         return SimilarResponse(query_id=query_id, neighbors=neighbors)
 
     def store_vectors(
-        self, vectors: List[Vector], normalize: bool
+        self, vector_type: VectorType, vectors: List[Vector], normalize: bool
     ) -> StoreVectorsResponse:
         """
         Add new vectors to existing FAISS index or create if not exists.
@@ -86,35 +91,35 @@ class VectorDBService:
 
         # If index exists, append; otherwise create new
         dimension = vectors.shape[1]
-        if self._artifacts is not None:
-            if dimension != self._artifacts.index.d:
+        if vector_type in self._artifacts:
+            artifacts = self._artifacts[vector_type]
+            if dimension != artifacts.index.d:
                 raise ValueError(
-                    f"Vector dimension {dimension} does not match index dimension {self._artifacts.index.d}"
+                    f"Vector dimension {dimension} does not match index dimension {artifacts.index.d}"
                 )
-            self._artifacts.index.add(vectors)
-            self._artifacts.ids.extend(ids)
+            artifacts.index.add(vectors)
+            artifacts.ids.extend(ids)
             # Update embeddings by concatenating
-            self._artifacts.embeddings = np.vstack(
-                [self._artifacts.embeddings, vectors]
-            )
+            artifacts.embeddings = np.vstack([artifacts.embeddings, vectors])
         else:
             # Create new index if doesn't exist
             index = faiss.IndexFlatIP(dimension)
             index.add(vectors)
-            self._artifacts = _IndexArtifacts(
+            self._artifacts[vector_type] = _IndexArtifacts(
                 index=index,
                 ids=ids,
                 embeddings=vectors,
             )
 
         logger.info(
-            "Updated FAISS index. Total ids: %s, vector dimension: %s",
-            len(ids),
+            "Updated FAISS index for %s. Total ids: %s, vector dimension: %s",
+            vector_type.value,
+            len(self._artifacts[vector_type].ids),
             dimension,
         )
 
         return StoreVectorsResponse(
-            num_vectors=len(ids),
+            num_vectors=len(self._artifacts[vector_type].ids),
             vector_dimension=dimension,
         )
 
@@ -134,9 +139,9 @@ class VectorDBService:
 
         return embeddings / norms
 
-    def _ensure_index(self) -> _IndexArtifacts:
-        if self._artifacts is None:
+    def _ensure_index(self, vector_type: VectorType) -> _IndexArtifacts:
+        if vector_type not in self._artifacts:
             raise RuntimeError(
-                "FAISS index is not initialized. call build_index first."
+                f"FAISS index for {vector_type.value} is not initialized. call build_index first."
             )
-        return self._artifacts
+        return self._artifacts[vector_type]
