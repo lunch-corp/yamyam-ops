@@ -5,17 +5,26 @@ from typing import List
 from pydantic import BaseModel, Field
 
 
-class DummyIndexConfig(BaseModel):
-    num_users: int = Field(..., ge=2, le=10_000, description="생성할 더미 사용자 수")
-    num_diners: int = Field(
-        ..., ge=2, le=1_000, description="사용자-다이너 상호작용 벡터 차원"
+class UserVector(BaseModel):
+    """사용자 벡터 데이터"""
+
+    user_id: str = Field(..., min_length=1, description="사용자 ID")
+    embedding: List[float] = Field(..., min_length=1, description="사용자 임베딩 벡터")
+
+
+class IndexCreateRequest(BaseModel):
+    """벡터 인덱스 생성 요청"""
+
+    vectors: List[UserVector] = Field(
+        ..., min_length=1, description="인덱싱할 사용자 벡터 리스트"
     )
-    random_seed: int = Field(..., description="재현 가능성을 위한 시드 값")
 
 
-class DummyIndexStatus(BaseModel):
-    num_users: int
-    num_diners: int
+class IndexCreateResponse(BaseModel):
+    """벡터 인덱스 생성 응답"""
+
+    num_users: int = Field(..., description="인덱싱된 사용자 수")
+    vector_dimension: int = Field(..., description="벡터 차원")
 
 
 class SimilarUsersRequest(BaseModel):

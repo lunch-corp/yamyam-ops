@@ -10,10 +10,10 @@ from app.api.v1 import (
     kakao_diners,
     kakao_reviewers,
     kakao_reviews,
-    recommendations,
     reviews,
     upload,
     users,
+    vector_db,
 )
 from app.core.config import settings
 from app.core.db import db
@@ -72,9 +72,7 @@ app.include_router(
 app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
 )
-app.include_router(
-    recommendations.router, prefix="/recommendations", tags=["recommendations"]
-)
+app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
 
 
 @app.get("/")
