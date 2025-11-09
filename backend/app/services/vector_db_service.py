@@ -64,7 +64,9 @@ class VectorDBService:
 
         return SimilarResponse(query_id=query_id, neighbors=neighbors)
 
-    def store_vectors(self, vectors: List[Vector]) -> StoreVectorsResponse:
+    def store_vectors(
+        self, vectors: List[Vector], normalize: bool
+    ) -> StoreVectorsResponse:
         """
         Add new vectors to existing FAISS index or create if not exists.
         """
@@ -79,7 +81,8 @@ class VectorDBService:
             raise ValueError("Vectors must be 2-dimensional")
 
         # 정규화
-        vectors = self._normalize_embeddings(vectors, ids)
+        if normalize:
+            vectors = self._normalize_embeddings(vectors, ids)
 
         # If index exists, append; otherwise create new
         dimension = vectors.shape[1]

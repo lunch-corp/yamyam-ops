@@ -27,7 +27,9 @@ def store_vectors(request: StoreVectorsRequest) -> StoreVectorsResponse:
     인덱스가 존재하지 않으면 새로 생성합니다.
     """
     try:
-        response = vector_db_service.store_vectors(vectors=request.vectors)
+        response = vector_db_service.store_vectors(
+            vectors=request.vectors, normalize=request.normalize
+        )
         logger.info(
             "Updated FAISS index. Total ids: %s, vector dimension: %s",
             response.num_vectors,

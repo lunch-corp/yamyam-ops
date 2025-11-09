@@ -18,6 +18,9 @@ class StoreVectorsRequest(BaseModel):
     """Request model for storing vectors to FAISS index"""
 
     vectors: List[Vector] = Field(..., min_length=1, description="추가할 벡터 리스트")
+    normalize: bool = Field(
+        default=True, description="벡터를 정규화할지 여부 (기본값: True)"
+    )
 
     class Config:
         json_schema_extra = {
@@ -25,7 +28,8 @@ class StoreVectorsRequest(BaseModel):
                 "vectors": [
                     {"id": "user_123", "embedding": [0.1, 0.2, 0.3]},
                     {"id": "user_456", "embedding": [0.4, 0.5, 0.6]},
-                ]
+                ],
+                "normalize": True,
             }
         }
 
