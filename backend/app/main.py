@@ -10,6 +10,7 @@ from app.api.v1 import (
     kakao_diners,
     kakao_reviewers,
     kakao_reviews,
+    redis,
     reviews,
     upload,
     users,
@@ -17,6 +18,7 @@ from app.api.v1 import (
 )
 from app.core.config import settings
 from app.core.db import db
+from app.core.redis_db import redis_db
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -37,9 +39,29 @@ async def lifespan(app: FastAPI):
         logger.error(f"데이터베이스 초기화 실패: {e}")
         raise
 
+    # Redis 연결 확인
+    try:
+        is_connected = await redis_db.ping()
+        if is_connected:
+            logger.info("Redis 연결 성공")
+        else:
+            logger.warning("Redis 연결 실패 - Redis 기능이 제한될 수 있습니다")
+    except Exception as e:
+        logger.error(f"Redis 초기화 실패: {e}")
+
     yield
+
     # 종료 시 실행
-    logger.info("yamyam API 서버 종료")
+    logger.info("yamyam API 서버 종료 중...")
+
+    # Redis 연결 종료
+    try:
+        await redis_db.close()
+        logger.info("Redis 연결 종료 완료")
+    except Exception as e:
+        logger.error(f"Redis 종료 실패: {e}")
+
+    logger.info("yamyam API 서버 종료 완료")
 
 
 # FastAPI 앱 생성
@@ -73,6 +95,7 @@ app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
 )
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
+app.include_router(redis.router, prefix="/api/v1/redis", tags=["redis"])
 
 
 @app.get("/")
@@ -86,9 +109,23 @@ def root():
 
 
 @app.get("/health")
-def health_check():
+async def health_check():
     """health check endpoint"""
-    return {"status": "healthy", "service": "yamyam-api", "version": "1.0.0"}
+    # Redis 상태 확인
+    redis_status = "healthy"
+    try:
+        is_connected = await redis_db.ping()
+        if not is_connected:
+            redis_status = "unhealthy"
+    except Exception:
+        redis_status = "unavailable"
+
+    return {
+        "status": "healthy",
+        "service": "yamyam-api",
+        "version": "1.0.0",
+        "redis": redis_status,
+    }
 
 
 @app.get("/info")
@@ -102,6 +139,7 @@ def get_info():
         "endpoints": {
             "users": "/users",
             "upload": "/upload",
+            "redis": "/api/v1/redis",
             "docs": "/docs",
             "health": "/health",
         },

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     # Redis 설정
     redis_url: str = "redis://redis:6379"
+    redis_max_batch_size: int = 1000  # 기본 배치 크기
 
     # FAISS 서버 설정
     faiss_server_url: Optional[str] = "http://faiss:7000"
