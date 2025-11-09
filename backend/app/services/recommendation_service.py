@@ -28,7 +28,7 @@ class DummyUserCFService:
 
     def __init__(self) -> None:
         self._artifacts: _IndexArtifacts | None = None
-        self.build_index(DummyIndexConfig(num_users=10, num_diners=20, random_seed=42))
+        self.build_index(DummyIndexConfig(num_users=10, num_diners=5, random_seed=42))
 
     def build_index(self, config: DummyIndexConfig) -> DummyIndexStatus:
         """더미 사용자-다이너 상호작용으로부터 FAISS 인덱스 생성"""
