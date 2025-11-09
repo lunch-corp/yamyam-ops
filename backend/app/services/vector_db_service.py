@@ -36,6 +36,7 @@ class VectorDBService:
         query_id: str,
         diner_scores: List[float],
         top_k: int,
+        filtering_ids: List[str] = None,
     ) -> SimilarResponse:
         """입력받은 ID와 점수 벡터를 기반으로 FAISS 인덱스에서 내적 기반 유사 벡터 검색"""
         artifacts = self._ensure_index(vector_type)
@@ -57,15 +58,18 @@ class VectorDBService:
         query_vec = (query_scores / norm).reshape(1, -1)
 
         # FAISS 검색
-        search_scores, indices = artifacts.index.search(
-            query_vec, min(top_k + 1, len(artifacts.ids))
-        )
+        filtering_set = set(filtering_ids) if filtering_ids else set()
+        search_k = min(top_k + 1, len(artifacts.ids))
+        search_scores, indices = artifacts.index.search(query_vec, search_k)
 
-        # top_k개 반환
-        neighbors = [
-            {"id": artifacts.ids[idx], "score": float(score)}
-            for idx, score in zip(indices[0], search_scores[0])
-        ][:top_k]
+        # top_k개 반환 (필터링 적용)
+        neighbors = []
+        for idx, score in zip(indices[0], search_scores[0]):
+            vec_id = artifacts.ids[idx]
+            if vec_id not in filtering_set:
+                neighbors.append({"id": vec_id, "score": float(score)})
+                if len(neighbors) >= top_k:
+                    break
 
         return SimilarResponse(query_id=query_id, neighbors=neighbors)
 

@@ -65,6 +65,10 @@ class SimilarRequest(BaseModel):
         description="쿼리 벡터 (유저가 식당에 부여한 점수 벡터 또는 유저 임베딩 벡터)",
     )
     top_k: int = Field(default=5, ge=1, le=50, description="반환할 검색 결과의 수")
+    filtering_ids: List[str] = Field(
+        default_factory=list,
+        description="필터링할 ID 리스트 (검색 결과에서 제외할 ID들)",
+    )
 
     class Config:
         json_schema_extra = {
@@ -73,6 +77,7 @@ class SimilarRequest(BaseModel):
                 "query_id": "user_999",
                 "query_vector": [0.1, 0.3, 0.7],
                 "top_k": 5,
+                "filtering_ids": ["user_123", "user_456"],
             }
         }
 

@@ -51,7 +51,11 @@ def get_similar(payload: SimilarRequest) -> SimilarResponse:
     """
     try:
         return vector_db_service.get_similar(
-            payload.vector_type, payload.query_id, payload.query_vector, payload.top_k
+            payload.vector_type,
+            payload.query_id,
+            payload.query_vector,
+            payload.top_k,
+            payload.filtering_ids,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
