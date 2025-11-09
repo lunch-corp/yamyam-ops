@@ -8,9 +8,9 @@ import faiss
 import numpy as np
 
 from app.schemas.vector_db import (
-    StoreVectorsRequest,
+    Vector,
     StoreVectorsResponse,
-    SimilarUsersResponse,
+    SimilarResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _IndexArtifacts:
     index: faiss.IndexFlatIP
-    user_ids: List[str]
+    ids: List[str]
     embeddings: np.ndarray
 
 
@@ -29,10 +29,10 @@ class VectorDBService:
     def __init__(self) -> None:
         self._artifacts: _IndexArtifacts | None = None
 
-    def get_similar_users(
-        self, user_id: str, diner_scores: List[float], top_k: int
-    ) -> SimilarUsersResponse:
-        """입력받은 사용자 ID와 점수 벡터를 기반으로 FAISS 인덱스에서 유사 사용자 검색"""
+    def get_similar(
+        self, query_id: str, diner_scores: List[float], top_k: int
+    ) -> SimilarResponse:
+        """입력받은 ID와 점수 벡터를 기반으로 FAISS 인덱스에서 내적 기반 유사 벡터 검색"""
         artifacts = self._ensure_index()
 
         # 입력 점수를 numpy 배열로 변환
@@ -53,33 +53,33 @@ class VectorDBService:
 
         # FAISS 검색
         search_scores, indices = artifacts.index.search(
-            query_vec, min(top_k + 1, len(artifacts.user_ids))
+            query_vec, min(top_k + 1, len(artifacts.ids))
         )
 
         # top_k개 반환
         neighbors = [
-            {"user_id": artifacts.user_ids[idx], "score": float(score)}
+            {"id": artifacts.ids[idx], "score": float(score)}
             for idx, score in zip(indices[0], search_scores[0])
         ][:top_k]
 
-        return SimilarUsersResponse(query_user_id=user_id, neighbors=neighbors)
+        return SimilarResponse(query_id=query_id, neighbors=neighbors)
 
-    def store_vectors(self, request: StoreVectorsRequest) -> StoreVectorsResponse:
+    def store_vectors(self, vectors: List[Vector]) -> StoreVectorsResponse:
         """
         Add new vectors to existing FAISS index or create if not exists.
         """
-        if not request.vectors:
+        if not vectors:
             raise ValueError("vectors cannot be empty")
 
-        # Extract user IDs and embeddings from UserVector objects
-        user_ids = [uv.user_id for uv in request.vectors]
-        vectors = np.array([uv.embedding for uv in request.vectors], dtype=np.float32)
+        # Extract IDs and embeddings from Vector objects
+        ids = [vec.id for vec in vectors]
+        vectors = np.array([vec.embedding for vec in vectors], dtype=np.float32)
 
         if vectors.ndim != 2:
             raise ValueError("Vectors must be 2-dimensional")
 
         # 정규화
-        vectors = self._normalize_embeddings(vectors, user_ids)
+        vectors = self._normalize_embeddings(vectors, ids)
 
         # If index exists, append; otherwise create new
         dimension = vectors.shape[1]
@@ -89,7 +89,7 @@ class VectorDBService:
                     f"Vector dimension {dimension} does not match index dimension {self._artifacts.index.d}"
                 )
             self._artifacts.index.add(vectors)
-            self._artifacts.user_ids.extend(user_ids)
+            self._artifacts.ids.extend(ids)
             # Update embeddings by concatenating
             self._artifacts.embeddings = np.vstack(
                 [self._artifacts.embeddings, vectors]
@@ -100,23 +100,23 @@ class VectorDBService:
             index.add(vectors)
             self._artifacts = _IndexArtifacts(
                 index=index,
-                user_ids=user_ids,
+                ids=ids,
                 embeddings=vectors,
             )
 
         logger.info(
-            "Updated FAISS index. Total users: %s, vector dimension: %s",
-            len(user_ids),
+            "Updated FAISS index. Total ids: %s, vector dimension: %s",
+            len(ids),
             dimension,
         )
 
         return StoreVectorsResponse(
-            num_users=len(user_ids),
+            num_vectors=len(ids),
             vector_dimension=dimension,
         )
 
     def _normalize_embeddings(
-        self, embeddings: np.ndarray, user_ids: List[str]
+        self, embeddings: np.ndarray, ids: List[str]
     ) -> np.ndarray:
         """벡터 정규화 (L2 norm)"""
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
@@ -125,8 +125,8 @@ class VectorDBService:
         zero_norm_mask = norms.squeeze() == 0
         if np.any(zero_norm_mask):
             raise ValueError(
-                f"Zero vectors are not allowed. Found zero vectors for users: "
-                f"{[user_ids[i] for i in np.where(zero_norm_mask)[0]]}"
+                f"Zero vectors are not allowed. Found zero vectors for ids: "
+                f"{[ids[i] for i in np.where(zero_norm_mask)[0]]}"
             )
 
         return embeddings / norms
