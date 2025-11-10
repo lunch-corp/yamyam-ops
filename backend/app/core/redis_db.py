@@ -4,6 +4,9 @@ from typing import Optional
 import redis.asyncio as aioredis
 from app.core.config import settings
 
+from pathlib import Path
+from app.services.redis_service import redis_service
+
 
 class RedisDatabase:
     def __init__(self):
@@ -36,9 +39,6 @@ class RedisDatabase:
     async def initialize_data(self):
         """Initialize Redis with similar restaurants data"""
         try:
-            from pathlib import Path
-            from app.services.redis_service import redis_service
-
             # Path to similar_restaurants.json
             data_path = Path("/app/data/similar_restaurants.json")
 

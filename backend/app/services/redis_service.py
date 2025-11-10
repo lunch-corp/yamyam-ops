@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Any, Dict, List, Optional
+from pathlib import Path
 
 from app.core.config import settings
 from app.core.redis_db import redis_db
@@ -451,9 +452,6 @@ class RedisService:
         Returns:
             Dictionary with statistics: {"loaded": count, "skipped": count}
         """
-        import json
-        from pathlib import Path
-
         try:
             json_file = Path(json_path)
             if not json_file.exists():
