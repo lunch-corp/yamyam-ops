@@ -481,7 +481,7 @@ class RedisService:
                 items[key] = value
 
             # Save to Redis with 7-day expiration
-            results = await self.create(items, expire=7 * 24 * 3600)
+            results = await self.create(items, expire = None)
 
             succeeded = sum(1 for v in results.values() if v)
             failed = len(results) - succeeded

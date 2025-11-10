@@ -256,6 +256,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Large data files (at the end of .gitignore)
+# Large data files
 data/*.json
 !data/.gitkeep
