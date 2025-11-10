@@ -32,24 +32,26 @@ class RedisDatabase:
         if self._client:
             await self._client.close()
             self._client = None
-    
+
     async def initialize_data(self):
         """Initialize Redis with similar restaurants data"""
         try:
             from pathlib import Path
             from app.services.redis_service import redis_service
-            
+
             # Path to similar_restaurants.json
             data_path = Path("/app/data/similar_restaurants.json")
-            
+
             if not data_path.exists():
                 # Try alternative path (for local development)
                 data_path = Path("data/similar_restaurants.json")
-            
+
             if data_path.exists():
                 logging.info("Initializing Redis with similar restaurants data...")
-                stats = await redis_service.load_similar_restaurants_data(str(data_path))
-                
+                stats = await redis_service.load_similar_restaurants_data(
+                    str(data_path)
+                )
+
                 if stats.get("already_exists"):
                     logging.info("Similar restaurants data already exists in Redis")
                 elif stats.get("error"):
@@ -58,7 +60,7 @@ class RedisDatabase:
                     logging.info(f"Loaded {stats['loaded']} similar restaurant entries")
             else:
                 logging.info(f"Similar restaurants data file not found at {data_path}")
-                
+
         except Exception as e:
             logging.error(f"Redis data initialization error: {e}")
 

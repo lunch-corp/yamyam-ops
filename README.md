@@ -112,7 +112,7 @@ yamyam-ops/
 │       └── default.conf         # Nginx 설정 (CORS 포함)
 │
 ├── data/
-│   └── similar_restaurants.json # 식당 유사도 데이터터
+│   └── similar_restaurants.json # 식당 유사도 데이터
 │
 ├── docs/                        # 문서
 │   ├── STREAMLIT_INTEGRATION.md
