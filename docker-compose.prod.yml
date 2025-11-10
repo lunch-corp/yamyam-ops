@@ -80,12 +80,13 @@ services:
       - ./postgres/init:/docker-entrypoint-initdb.d
 
     ports:
-      - "15477:5432"
+      - "15477:5432"  # 외부 접근용
+      - "5477:5432"   # 내부 접근용
     networks:
       - yamyam-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -p 5477"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -p 5432"]
       interval: 10s
       timeout: 5s
       retries: 5
