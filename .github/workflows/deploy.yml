@@ -180,7 +180,7 @@ jobs:
           
           # 방법 1: nginx를 통해 헬스체크 시도 (nginx가 backend로 프록시)
           echo "→ nginx를 통한 헬스체크 시도..."
-          RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "curl -f -w '\nHTTP Status: %{http_code}' http://localhost/health 2>&1")
+          RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "curl -f -w '\nHTTP Status: %{http_code}' http://localhost:8808/health 2>&1")
           EXIT_CODE=$?
           
           if [ $EXIT_CODE -eq 0 ]; then
@@ -193,7 +193,7 @@ jobs:
           echo "nginx를 통한 접근 실패, backend 컨테이너에서 직접 시도..."
           
           # 방법 2: backend 컨테이너에서 직접 헬스체크 (fallback)
-          RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "docker exec yamyam-backend-prod curl -f -w '\nHTTP Status: %{http_code}' http://localhost:8000/health 2>&1")
+          RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "docker exec yamyam-backend-prod curl -f -w '\nHTTP Status: %{http_code}' http://localhost:8080/health 2>&1")
           EXIT_CODE=$?
           
           echo "$RESPONSE"
