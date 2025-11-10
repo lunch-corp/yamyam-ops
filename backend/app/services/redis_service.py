@@ -442,5 +442,63 @@ class RedisService:
             raise
 
 
+    async def load_similar_restaurants_data(self, json_path: str) -> Dict[str, int]:
+        """
+        Load similar restaurants data from JSON file into Redis.
+        
+        Args:
+            json_path: Path to similar_restaurants.json file
+            
+        Returns:
+            Dictionary with statistics: {"loaded": count, "skipped": count}
+        """
+        import json
+        from pathlib import Path
+        
+        try:
+            json_file = Path(json_path)
+            if not json_file.exists():
+                logging.warning(f"Similar restaurants file not found: {json_path}")
+                return {"loaded": 0, "skipped": 0, "error": "File not found"}
+            
+            # Check if data already exists (sample check)
+            sample_key = "diner:101:similar_diner_ids"
+            existing = await self.read([sample_key])
+            
+            if existing.get(sample_key) is not None:
+                logging.info("Similar restaurants data already exists in Redis")
+                return {"loaded": 0, "skipped": 0, "already_exists": True}
+            
+            logging.info(f"Loading similar restaurants data from {json_path}...")
+            
+            # Load JSON file
+            with open(json_file, "r", encoding="utf-8") as f:
+                similar_data = json.load(f)
+            
+            # Prepare data for Redis
+            items = {}
+            for restaurant_id, similar_list in similar_data.items():
+                key = f"diner:{restaurant_id}:similar_diner_ids"
+                # Extract only IDs (first element of each pair)
+                value = [item[0] for item in similar_list]
+                items[key] = value
+            
+            # Save to Redis with 7-day expiration
+            results = await self.create(items, expire=7 * 24 * 3600)
+            
+            succeeded = sum(1 for v in results.values() if v)
+            failed = len(results) - succeeded
+            
+            logging.info(
+                f"✅ Similar restaurants data loaded: {succeeded} keys created, {failed} failed"
+            )
+            
+            return {"loaded": succeeded, "skipped": failed}
+            
+        except Exception as e:
+            logging.error(f"Failed to load similar restaurants data: {e}")
+            return {"loaded": 0, "skipped": 0, "error": str(e)}
+
+
 # Global service instance
 redis_service = RedisService()

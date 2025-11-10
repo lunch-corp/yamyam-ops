@@ -40,6 +40,7 @@ services:
     volumes:
       - ./backend:/app
       - ./backend/firebase-service-account-key.json:/app/firebase-key.json
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -70,6 +71,8 @@ services:
     container_name: yamyam-redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -78,3 +81,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

@@ -111,6 +111,9 @@ yamyam-ops/
 │   └── conf/
 │       └── default.conf         # Nginx 설정 (CORS 포함)
 │
+├── data/
+│   └── similar_restaurants.json # 식당 유사도 데이터터
+│
 ├── docs/                        # 문서
 │   ├── STREAMLIT_INTEGRATION.md
 │   ├── UPLOAD_API_GUIDE.md
