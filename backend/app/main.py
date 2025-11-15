@@ -10,6 +10,7 @@ from app.api.v1 import (
     kakao_diners,
     kakao_reviewers,
     kakao_reviews,
+    mp_rank,
     redis,
     reviews,
     upload,
@@ -101,6 +102,8 @@ app.include_router(
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
 app.include_router(redis.router, prefix="/api/v1/redis", tags=["redis"])
 app.include_router(preload.router, prefix="/preload", tags=["kakao-data"])
+
+app.include_router(mp_rank.router, prefix="/mp_rank", tags=["mp-rank"])
 
 
 @app.get("/")

@@ -2,12 +2,19 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# 빌드 아규먼트
+ARG GITHUB_TOKEN
+
+# 환경변수 설정
+ENV GITHUB_TOKEN=$GITHUB_TOKEN
+
 # 시스템 패키지 업데이트 및 필요한 패키지 설치
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # uv 설치
@@ -22,7 +29,9 @@ COPY . .
 
 # 비root 사용자 생성 및 권한 설정
 RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
+    && chown -R app:app /app \
+    && mkdir -p /usr/local/lib/python3.11/data \
+    && chown app:app /usr/local/lib/python3.11/data
 USER app
 
 # 포트 노출

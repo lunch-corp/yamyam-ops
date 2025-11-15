@@ -5,13 +5,21 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
     container_name: yamyam-backend
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # 데이터베이스 설정
       DATABASE_URL: postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb
       REDIS_URL: redis://redis:6379
+      
+      # yamyam-lab 데이터 설정
+      DATA_FOLDER_ID: ${DATA_FOLDER_ID}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
       
       # JWT 설정
       JWT_SECRET_KEY: your-secret-key-here-change-in-production
