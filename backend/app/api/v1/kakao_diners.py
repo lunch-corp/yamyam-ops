@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Query
 
+from app.core.db import db
 from app.schemas.kakao_diner import (
     KakaoDinerCreate,
     KakaoDinerResponse,
@@ -15,6 +16,29 @@ logger = logging.getLogger(__name__)
 
 # 서비스 인스턴스 생성
 diner_service = KakaoDinerService()
+
+
+@router.post(
+    "/preload",
+    tags=["kakao-restaurants"],
+    summary="카카오 음식점 데이터 메모리 로드",
+)
+def preload_restaurants():
+    """kakao_diner 테이블 데이터를 메모리에 미리 로드합니다"""
+    try:
+        count = db.preload_kakao_diners()
+        return {
+            "success": True,
+            "message": f"Successfully preloaded {count} records",
+            "count": count,
+        }
+    except Exception as e:
+        logger.error(f"Failed to preload kakao_diner data: {e}")
+        return {
+            "success": False,
+            "message": f"Failed to preload data: {str(e)}",
+            "count": 0,
+        }
 
 
 @router.post(
