@@ -19,10 +19,14 @@ class MostPopularRankService:
     def __init__(self):
         self.base_data_config = DataConfig(config_root_path="/app")
 
-    def get_top_diners(self, request: MostPopularRankRequest) -> MostPopularRankResponse:
+    def get_top_diners(
+        self, request: MostPopularRankRequest
+    ) -> MostPopularRankResponse:
         validation_errors = self._validate_request(request)
         if validation_errors:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=validation_errors)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=validation_errors
+            )
 
         reference_date = self._parse_reference_date(request.reference_date)
 
@@ -60,7 +64,9 @@ class MostPopularRankService:
             filters=filters,
         )
 
-    def _parse_reference_date(self, reference_date: Optional[Union[str, datetime]]) -> Optional[datetime]:
+    def _parse_reference_date(
+        self, reference_date: Optional[Union[str, datetime]]
+    ) -> Optional[datetime]:
         if reference_date is None:
             return None
         if isinstance(reference_date, datetime):
