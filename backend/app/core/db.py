@@ -11,7 +11,12 @@ from app.core.config import settings
 
 
 class Database:
-    KAKAO_DINER = "kakao_diner"
+    TABLE_NAMES = [
+        "kakao_diner",
+        "kakao_diner_category",
+        "kakao_review",
+        "kakao_reviewer",
+    ]
 
     def __init__(self):
         self.connection_string = settings.database_url
@@ -97,25 +102,10 @@ class Database:
                 f"Table name: {','.join([table['table_name'] for table in tables])}"
             )
 
-    def preload_kakao_diners(self):
-        """kakao_diner 테이블 데이터를 미리 로드합니다"""
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(f"SELECT * FROM {self.KAKAO_DINER};")
-                diners = pd.DataFrame([dict(row) for row in cursor.fetchall()])
-                cursor.close()
-
-                # _dataset에 저장
-                self._dataset[self.KAKAO_DINER] = diners
-
-                logging.info(
-                    f"kakao_diner 테이블 pre-load 완료: {len(diners)}개 레코드"
-                )
-                return len(diners)
-        except Exception as e:
-            logging.error(f"kakao_diner 테이블 pre-load 중 오류: {e}")
-            raise
+    def preload_kakao_data(self):
+        """kakao 데이터를 미리 로드합니다"""
+        for table_name in self.TABLE_NAMES:
+            self._preload_data(table_name)
 
     def get_dataset(self, dataset_name: str):
         """pre-loaded dataset을 반환합니다
@@ -133,6 +123,23 @@ class Database:
             raise
         except Exception as e:
             logging.error(e)
+            raise
+
+    def _preload_data(self, table_name: str):
+        """kakao_diner 테이블 데이터를 미리 로드합니다"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(f"SELECT * FROM {table_name};")
+                data = pd.DataFrame([dict(row) for row in cursor.fetchall()])
+                cursor.close()
+
+                # _dataset에 저장
+                self._dataset[table_name] = data
+                logging.info(f"{table_name} 테이블 pre-load 완료: {len(data)}개 레코드")
+                return len(data)
+        except Exception as e:
+            logging.error(f"{table_name} 테이블 pre-load 중 오류: {e}")
             raise
 
 
