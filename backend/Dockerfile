@@ -2,11 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 빌드 아규먼트
-ARG GITHUB_TOKEN
 
-# 환경변수 설정
-ENV GITHUB_TOKEN=$GITHUB_TOKEN
+# GIT HUB ARG & 환경변수 설정
+ARG GITHUB_TOKEN
+RUN git config --global url."https://oauth2:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
 # 시스템 패키지 업데이트 및 필요한 패키지 설치
 RUN apt-get update && apt-get install -y \
@@ -19,6 +18,11 @@ RUN apt-get update && apt-get install -y \
 
 # uv 설치
 RUN pip install uv
+
+# yamyam-lab-config 클론 (additional_reviews.yaml용)
+RUN git clone https://github.com/lunch-corp/yamyam-lab-config.git /tmp/yamyam-lab-config \
+    && cp /tmp/yamyam-lab-config/data/additional_reviews.yaml /app/data/ \
+    && rm -rf /tmp/yamyam-lab-config
 
 # Python 의존성 설치 (uv 사용)
 COPY pyproject.toml .

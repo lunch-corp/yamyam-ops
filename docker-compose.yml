@@ -17,8 +17,6 @@ services:
       DATABASE_URL: postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb
       REDIS_URL: redis://redis:6379
       
-      # yamyam-lab 데이터 설정
-      DATA_FOLDER_ID: ${DATA_FOLDER_ID}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       
       # JWT 설정

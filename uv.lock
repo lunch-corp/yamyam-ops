@@ -987,14 +987,22 @@ wheels = [
 
 [[package]]
 name = "faiss-cpu"
-version = "1.7.4"
+version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/fc/b1b4460b3a369c2e51f20c65007819132626e55944717b9e2e9bc00a2c3e/faiss_cpu-1.7.4-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:d0bbd6f55d7940cc0692f79e32a58c66106c3c950cee2341b05722de9da23ea3", size = 6545513, upload-time = "2023-04-24T10:41:59.128Z" },
-    { url = "https://files.pythonhosted.org/packages/d6/0c/f1d71b34bde7d0bbc427e3f7af6a0e00319fb2e69960ef628be24629bac5/faiss_cpu-1.7.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:e13c14280376100f143767d0efe47dcb32618f69e62bbd3ea5cd38c2e1755926", size = 2749265, upload-time = "2023-04-24T10:42:00.71Z" },
-    { url = "https://files.pythonhosted.org/packages/b5/a5/eb316e01e79a585a6e830bca0e9214e8db3b9d70e4de9e070a1a3b409be9/faiss_cpu-1.7.4-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c521cb8462f3b00c0c7dfb11caff492bb67816528b947be28a3b76373952c41d", size = 3204941, upload-time = "2023-04-24T10:42:03.178Z" },
-    { url = "https://files.pythonhosted.org/packages/61/e6/3b740163e7fcce1220417ef6c18a7bc00b9d11b64264f3abf483a3771153/faiss_cpu-1.7.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:afdd9fe1141117fed85961fd36ee627c83fc3b9fd47bafb52d3c849cc2f088b7", size = 17554809, upload-time = "2023-04-24T10:42:07.691Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/8f/55f8cd863c678a703aa3b97e5f4511cfd2c52987ba05459afdcdec76eeb3/faiss_cpu-1.7.4-cp311-cp311-win_amd64.whl", hash = "sha256:2ff7f57889ea31d945e3b87275be3cad5d55b6261a4e3f51c7aba304d76b81fb", size = 10770511, upload-time = "2023-04-24T10:42:09.974Z" },
+    { url = "https://files.pythonhosted.org/packages/34/7b/d2c76b92d3082998f74b6318c86f350f33f9a6bca7f671641744ba74b73d/faiss_cpu-1.8.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:c9e6ad94b86626be1a0faff3e53c4ca169eba88aa156d7e90c5a2e9ba30558fb", size = 7347118, upload-time = "2024-03-01T08:59:13.334Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/d3/2465dda67d48c873fcce7dbfa8018a0ae648e150e4d336c84e8ba553c897/faiss_cpu-1.8.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4601dbd81733bf1bc3bff690aac981289fb386dc8e60d0c4eec8a37ba6856d20", size = 3103948, upload-time = "2024-03-01T08:59:15.535Z" },
+    { url = "https://files.pythonhosted.org/packages/75/52/db396f7b8bdad98a65d2df247d59183e890d11204ad830b2dc8f9a4418d8/faiss_cpu-1.8.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fa943d3b5e8c5c77cdd629d9c3c6f78d7da616e586fdd1b94aecbf2e5fa9ba06", size = 3554938, upload-time = "2024-03-01T08:59:17.04Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/be/23bfb89fdeacf133dffd905787c620740d89d3fd35ffcf98bdd31f9348f7/faiss_cpu-1.8.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b644b366c3b239b34fa3e08bf65bfc78a24eda1e1ea5b2b6d9be3e8fc73d8179", size = 27045775, upload-time = "2024-03-01T08:59:19.9Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/ad/63eb31be05c38445781caecbc6d3b9dec151012194b00573ba34f29d5cf5/faiss_cpu-1.8.0-cp311-cp311-win_amd64.whl", hash = "sha256:f85ecf3514850f93985be238351f5a70736133cfae784b372640aa17c6343a1b", size = 14502226, upload-time = "2024-03-01T08:59:22.379Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/de/5eb33b994950e998f00ec7618e485e43847ace0a8a08466b7b9a866bccb0/faiss_cpu-1.8.0-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:61abc0129a357ac00f17f5167f14dff41480de2cc852f306c3d4cd36b893ccbd", size = 7367061, upload-time = "2024-03-01T08:59:25.215Z" },
+    { url = "https://files.pythonhosted.org/packages/70/f4/24f678bd798f7792fc4b6ec0a184d4d1128e182998ae00dbde09495320dc/faiss_cpu-1.8.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b788186d6eb94e6333e1aa8bb6c84b66e967458ecdd1cee22e16f04c43ee674c", size = 3102569, upload-time = "2024-03-01T08:59:27.567Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/0b/941585da76d22acb265472faaf4753bc257aecc9d16e342baedc2add157f/faiss_cpu-1.8.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5658d90a202c62e4a69c5b065785e9ddcaf6986cb395c16afed8dbe4c58c31a2", size = 3559606, upload-time = "2024-03-01T08:59:29.787Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/b8/5e19df9e07c8a251ef152c9a0805f3728eb4ace5a1c99e5dc7eb671d3f0d/faiss_cpu-1.8.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5d460a372efce547e53d3c47d2c2a8a90b186ad245969048c10c1d7a1e5cf21b", size = 27046533, upload-time = "2024-03-01T08:59:31.567Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/39/e5bc357d7992f2a8e02af666f2bf01af6d247968fec6c08df56d8b6dc430/faiss_cpu-1.8.0-cp312-cp312-win_amd64.whl", hash = "sha256:9e6520324f0a6764dd267b3c32c76958bf2b1ec36752950f6fab31a7295980a0", size = 14508023, upload-time = "2024-03-01T08:59:34.684Z" },
 ]
 
 [[package]]
@@ -5476,7 +5484,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = "==1.13.1" },
-    { name = "faiss-cpu", specifier = "==1.7.4" },
+    { name = "faiss-cpu", specifier = "==1.8.0" },
     { name = "fastapi", specifier = "==0.104.1" },
     { name = "firebase-admin", specifier = "==6.4.0" },
     { name = "httpx", specifier = "==0.25.2" },
@@ -5492,13 +5500,13 @@ requires-dist = [
     { name = "redis", specifier = "==5.0.1" },
     { name = "sqlalchemy", specifier = "==2.0.23" },
     { name = "uvicorn", specifier = "==0.24.0" },
-    { name = "yamyam-lab", git = "https://github.com/lunch-corp/yamyam-lab.git?rev=main" },
+    { name = "yamyam-lab", git = "https://github.com/lunch-corp/yamyam-lab.git?rev=v1.0.5" },
 ]
 
 [[package]]
 name = "yamyam-lab"
 version = "1.0.0"
-source = { git = "https://github.com/lunch-corp/yamyam-lab.git?rev=main#3a1570fd75718346f471da1eed37fbe929352a73" }
+source = { git = "https://github.com/lunch-corp/yamyam-lab.git?rev=v1.0.5#fe19c97c066006f09e94ca9e6a4d30a884fe5701" }
 dependencies = [
     { name = "catboost" },
     { name = "easydict" },
