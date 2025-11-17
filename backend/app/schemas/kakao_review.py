@@ -24,7 +24,6 @@ class KakaoReviewUpdate(BaseModel):
 
 class KakaoReview(KakaoReviewBase):
     id: str  # ULID
-    kakao_review_id: str
     crawled_at: str
     updated_at: str
 
@@ -34,7 +33,6 @@ class KakaoReview(KakaoReviewBase):
 
 class KakaoReviewResponse(BaseModel):
     id: str  # ULID
-    kakao_review_id: str
     diner_idx: int
     reviewer_id: int
     review_id: int
