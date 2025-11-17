@@ -174,6 +174,13 @@ GET_ALL_KAKAO_REVIEWERS = """
            reviewer_review_cnt, reviewer_avg, badge_grade, badge_level,
            crawled_at, updated_at
     FROM kakao_reviewer ORDER BY reviewer_review_cnt DESC, reviewer_avg DESC
+"""
+
+GET_ALL_KAKAO_REVIEWERS_PAGINATED = """
+    SELECT id, reviewer_id, reviewer_user_name,
+           reviewer_review_cnt, reviewer_avg, badge_grade, badge_level,
+           crawled_at, updated_at
+    FROM kakao_reviewer ORDER BY reviewer_review_cnt DESC, reviewer_avg DESC
     LIMIT %s OFFSET %s
 """
 
@@ -249,6 +256,15 @@ GET_ALL_KAKAO_REVIEWS = """
            kr2.reviewer_user_name
     FROM kakao_review kr
     LEFT JOIN kakao_diner kd ON kr.diner_idx = kd.diner_idx
+    LEFT JOIN kakao_reviewer kr2 ON kr.reviewer_id = kr2.reviewer_id
+    ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC
+"""
+
+GET_ALL_KAKAO_REVIEWS_PAGINATED = """
+    SELECT kr.id, kr.diner_idx, kr.reviewer_id, kr.review_id,
+           kr.reviewer_review, kr.reviewer_review_date, kr.reviewer_review_score,
+           kr.crawled_at, kr.updated_at, kr2.reviewer_user_name
+    FROM kakao_review kr
     LEFT JOIN kakao_reviewer kr2 ON kr.reviewer_id = kr2.reviewer_id
     ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC LIMIT %s OFFSET %s
 """

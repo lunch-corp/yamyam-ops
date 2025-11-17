@@ -59,9 +59,7 @@ class KakaoReviewService(
                     )
 
                 # 중복 리뷰 확인
-                if self._check_exists(
-                    CHECK_KAKAO_REVIEW_DUPLICATE, (data.review_id,)
-                ):
+                if self._check_exists(CHECK_KAKAO_REVIEW_DUPLICATE, (data.review_id,)):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Kakao review already exists",
@@ -105,14 +103,14 @@ class KakaoReviewService(
 
     def get_list(
         self,
-        skip: int = 0,
-        limit: int = 100,
+        skip: Optional[int] = 0,
+        limit: Optional[int] = 100,
         diner_idx: Optional[int] = None,
         reviewer_id: Optional[int] = None,
         min_rating: Optional[float] = None,
     ) -> List[KakaoReviewWithDetails]:
         """카카오 리뷰 목록 조회 (상세 정보 포함)"""
-        # 필터링이 필요한 경우 동적 쿼리 사용, 그렇지 않으면 정적 쿼리 사용
+        # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
         if diner_idx or reviewer_id or min_rating is not None:
             query = GET_KAKAO_REVIEWS_BASE_QUERY
 
@@ -134,21 +132,24 @@ class KakaoReviewService(
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
 
-            query += (
-                " ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC LIMIT %s OFFSET %s"
-            )
+            query += " ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC LIMIT %s OFFSET %s"
             params.extend([limit, skip])
 
             results = self._execute_query_all(query, tuple(params))
         else:
-            # 필터링이 없는 경우 정적 쿼리 사용
-            results = self._execute_query_all(GET_ALL_KAKAO_REVIEWS, (limit, skip))
+            if skip is None and limit is None:
+                results = self._execute_query_all(GET_ALL_KAKAO_REVIEWS, ())
+            else:
+                # 페이지네이션이 필요한 경우
+                from app.database.kakao_queries import GET_ALL_KAKAO_REVIEWS_PAGINATED
+
+                results = self._execute_query_all(
+                    GET_ALL_KAKAO_REVIEWS_PAGINATED, (limit, skip)
+                )
 
         return [self._convert_to_details_response(row) for row in results]
 
-    def update(
-        self, review_id: int, data: KakaoReviewUpdate
-    ) -> KakaoReviewResponse:
+    def update(self, review_id: int, data: KakaoReviewUpdate) -> KakaoReviewResponse:
         """카카오 리뷰 정보 업데이트"""
         # 리뷰 존재 확인
         if not self._check_exists(CHECK_KAKAO_REVIEW_EXISTS, (review_id,)):
@@ -172,16 +173,12 @@ class KakaoReviewService(
         # review_id를 마지막에 추가
         update_values.append(review_id)
 
-        result = self._execute_query(
-            UPDATE_KAKAO_REVIEW_BY_ID, tuple(update_values)
-        )
+        result = self._execute_query(UPDATE_KAKAO_REVIEW_BY_ID, tuple(update_values))
         return self._convert_to_response(result)
 
     def delete(self, review_id: int) -> dict:
         """카카오 리뷰 삭제"""
-        result = self._execute_query(
-            DELETE_KAKAO_REVIEW_BY_ID, (review_id,)
-        )
+        result = self._execute_query(DELETE_KAKAO_REVIEW_BY_ID, (review_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

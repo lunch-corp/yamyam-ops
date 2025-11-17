@@ -224,7 +224,9 @@ class KakaoDataProcessor:
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
         "float_default_zero": lambda x: float(x) if pd.notnull(x) else 0.0,
-        "date_str": lambda x: str(x).strip() if pd.notnull(x) and str(x).strip() else None,
+        "date_str": lambda x: str(x).strip()
+        if pd.notnull(x) and str(x).strip()
+        else None,
         "list_to_comma": lambda x: KakaoDataProcessor.convert_list_string_to_comma_separated(
             x
         ),

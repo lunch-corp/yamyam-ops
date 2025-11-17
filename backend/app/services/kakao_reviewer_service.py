@@ -71,17 +71,16 @@ class KakaoReviewerService(
 
     def get_list(
         self,
-        skip: int = 0,
-        limit: int = 100,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
         min_review_count: Optional[int] = None,
         is_verified: Optional[bool] = None,
     ) -> List[KakaoReviewerResponse]:
         """카카오 리뷰어 목록 조회"""
-        # 필터링이 필요한 경우 동적 쿼리 사용, 그렇지 않으면 정적 쿼리 사용
+        # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
         if min_review_count is not None or is_verified is not None:
             fields = [
                 "id",
-                "kakao_user_id",
                 "reviewer_id",
                 "reviewer_user_name",
                 "reviewer_review_cnt",
@@ -114,8 +113,16 @@ class KakaoReviewerService(
             params.extend(query_params)
             results = self._execute_query_all(query, tuple(params))
         else:
-            # 필터링이 없는 경우 정적 쿼리 사용
-            results = self._execute_query_all(GET_ALL_KAKAO_REVIEWERS, (limit, skip))
+            # 필터링이 없고 skip/limit이 기본값(0, 100)인 경우 전체 쿼리 사용
+            if skip is None and limit is None:
+                results = self._execute_query_all(GET_ALL_KAKAO_REVIEWERS, ())
+            else:
+                # 페이지네이션이 필요한 경우
+                from app.database.kakao_queries import GET_ALL_KAKAO_REVIEWERS_PAGINATED
+
+                results = self._execute_query_all(
+                    GET_ALL_KAKAO_REVIEWERS_PAGINATED, (limit, skip)
+                )
 
         return [self._convert_to_response(row) for row in results]
 
@@ -147,9 +154,7 @@ class KakaoReviewerService(
         # reviewer_id를 마지막에 추가
         update_values.append(reviewer_id)
 
-        result = self._execute_query(
-            UPDATE_KAKAO_REVIEWER_BY_ID, tuple(update_values)
-        )
+        result = self._execute_query(UPDATE_KAKAO_REVIEWER_BY_ID, tuple(update_values))
         return self._convert_to_response(result)
 
     def delete(self, reviewer_id: int) -> dict:

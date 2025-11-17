@@ -90,7 +90,17 @@ class KakaoDinerService(
     ) -> List[KakaoDinerResponse]:
         """카카오 음식점 목록 조회"""
         # 필터링이 필요한 경우 동적 쿼리 사용, 그렇지 않으면 정적 쿼리 사용
-        if any([diner_category_large, diner_category_middle, diner_category_small, diner_category_detail]) or min_rating is not None:
+        if (
+            any(
+                [
+                    diner_category_large,
+                    diner_category_middle,
+                    diner_category_small,
+                    diner_category_detail,
+                ]
+            )
+            or min_rating is not None
+        ):
             fields = [
                 "id",
                 "diner_idx",

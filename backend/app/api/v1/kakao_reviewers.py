@@ -71,9 +71,7 @@ def update_reviewer(reviewer_id: int, reviewer_update: KakaoReviewerUpdate):
     return reviewer_service.update(reviewer_id, reviewer_update)
 
 
-@router.delete(
-    "/{reviewer_id}", tags=["kakao-reviewers"], summary="카카오 리뷰어 삭제"
-)
+@router.delete("/{reviewer_id}", tags=["kakao-reviewers"], summary="카카오 리뷰어 삭제")
 def delete_reviewer(reviewer_id: int):
     """카카오 리뷰어 삭제"""
     return reviewer_service.delete(reviewer_id)

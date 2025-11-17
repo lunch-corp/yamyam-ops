@@ -48,7 +48,13 @@ def list_restaurants(
 ):
     """카카오 음식점 목록 조회"""
     return diner_service.get_list(
-        skip=skip, limit=limit, diner_category_large=diner_category_large, diner_category_middle=diner_category_middle, diner_category_small=diner_category_small, diner_category_detail=diner_category_detail, min_rating=min_rating
+        skip=skip,
+        limit=limit,
+        diner_category_large=diner_category_large,
+        diner_category_middle=diner_category_middle,
+        diner_category_small=diner_category_small,
+        diner_category_detail=diner_category_detail,
+        min_rating=min_rating,
     )
 
 
