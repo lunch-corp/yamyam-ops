@@ -15,7 +15,6 @@ from app.api.v1 import (
     upload,
     users,
     vector_db,
-    preload,
 )
 from app.core.config import settings
 from app.core.db import db
@@ -100,7 +99,6 @@ app.include_router(
 )
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
 app.include_router(redis.router, prefix="/api/v1/redis", tags=["redis"])
-app.include_router(preload.router, prefix="/preload", tags=["kakao-data"])
 
 
 @app.get("/")
