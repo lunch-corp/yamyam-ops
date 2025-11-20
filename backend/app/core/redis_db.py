@@ -1,14 +1,18 @@
+import os
+import json
 import logging
-from typing import Optional
+import subprocess
 
 import redis.asyncio as aioredis
 from app.core.config import settings
+from app.services.redis_service import RedisService
 
 
 class RedisDatabase:
     def __init__(self):
         self.redis_url = settings.redis_url
-        self._client: Optional[aioredis.Redis] = None
+        self._client: aioredis.Redis = None
+        self.service: RedisService = None
 
     async def get_client(self) -> aioredis.Redis:
         """Returns async Redis client"""
@@ -16,6 +20,8 @@ class RedisDatabase:
             self._client = await aioredis.from_url(
                 self.redis_url, decode_responses=True, max_connections=10
             )
+        if self.service is None:
+            self.service = RedisService(self._client)
         return self._client
 
     async def ping(self) -> bool:
@@ -32,35 +38,36 @@ class RedisDatabase:
         if self._client:
             await self._client.close()
             self._client = None
+            self.service = None
 
     async def initialize_data(self):
-        """Initialize Redis with similar restaurants data"""
         try:
-            from pathlib import Path
-            from app.services.redis_service import redis_service
+            host = os.getenv("REMOTE_JSON_HOST")
+            port = os.getenv("REMOTE_JSON_PORT")
+            user = os.getenv("REMOTE_JSON_USER")
+            pw = os.getenv("REMOTE_JSON_PASS")
+            remote_path = os.getenv("REMOTE_JSON_PATH")
 
-            # Path to similar_restaurants.json
-            data_path = Path("/app/data/similar_restaurants.json")
-
-            if not data_path.exists():
-                # Try alternative path (for local development)
-                data_path = Path("data/similar_restaurants.json")
-
-            if data_path.exists():
-                logging.info("Initializing Redis with similar restaurants data...")
-                stats = await redis_service.load_similar_restaurants_data(
-                    str(data_path)
+            if not all([host, port, user, pw, remote_path]):
+                logging.warning(
+                    "Remote JSON server environment variables are not fully set"
                 )
+                return
 
-                if stats.get("already_exists"):
-                    logging.info("Similar restaurants data already exists in Redis")
-                elif stats.get("error"):
-                    logging.error(f"Failed to load data: {stats['error']}")
-                else:
-                    logging.info(f"Loaded {stats['loaded']} similar restaurant entries")
-            else:
-                logging.info(f"Similar restaurants data file not found at {data_path}")
+            logging.info("Fetching similar restaurants JSON from remote server...")
+            cmd = f"sshpass -p {pw} ssh -p {port} -o StrictHostKeyChecking=no {user}@{host} cat {remote_path}"
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, check=True
+            )
+            similar_data = json.loads(result.stdout)
 
+            await self.get_client()
+            if self.service:
+                await self.service.load_similar_restaurants_data(
+                    similar_data, from_memory=True
+                )
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to fetch JSON from remote server: {e.stderr}")
         except Exception as e:
             logging.error(f"Redis data initialization error: {e}")
 

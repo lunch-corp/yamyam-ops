@@ -8,7 +8,7 @@ from app.schemas.redis_schemas import (
     RedisResponse,
     RedisUpdateRequest,
 )
-from app.services.redis_service import redis_service
+from app.core.redis_db import redis_db
 from fastapi import APIRouter, Body, HTTPException, status
 
 router = APIRouter()
@@ -31,7 +31,10 @@ async def create_redis_keys(request: RedisCreateRequest):
     Single key example: `{"items": {"1783192": {"diner_ids": ["57812123"]}}, "expire": 3600}`
     """
     try:
-        results = await redis_service.create(items=request.items, expire=request.expire)
+        await redis_db.get_client()
+        results = await redis_db.service.create(
+            items=request.items, expire=request.expire
+        )
 
         succeeded = sum(1 for v in results.values() if v)
         failed = len(results) - succeeded
@@ -66,7 +69,7 @@ async def read_redis_keys(request: RedisReadRequest = Body(...)):
     Single key example: `{"keys": ["1783192"]}`
     """
     try:
-        results = await redis_service.read(keys=request.keys)
+        results = await redis_db.service.read(keys=request.keys)
 
         found = sum(1 for v in results.values() if v is not None)
         not_found = len(results) - found
@@ -102,7 +105,9 @@ async def update_redis_keys(request: RedisUpdateRequest):
     Single key example: `{"items": {"1783192": {"diner_ids": ["57812123"]}}, "expire": 7200}`
     """
     try:
-        results = await redis_service.update(items=request.items, expire=request.expire)
+        results = await redis_db.service.update(
+            items=request.items, expire=request.expire
+        )
 
         succeeded = sum(1 for v in results.values() if v)
         failed = len(results) - succeeded
@@ -137,7 +142,7 @@ async def delete_redis_keys(request: RedisDeleteRequest = Body(...)):
     Single key example: `{"keys": ["1783192"]}`
     """
     try:
-        results = await redis_service.delete(keys=request.keys)
+        results = await redis_db.service.delete(keys=request.keys)
 
         succeeded = sum(1 for v in results.values() if v)
         failed = len(results) - succeeded
@@ -176,7 +181,7 @@ async def delete_redis_key(request: RedisDeleteRequest = Body(...)):
     try:
         # 벌크 작업
         if request.keys is not None:
-            results = await redis_service.bulk_delete(keys=request.keys)
+            results = await redis_db.service.bulk_delete(keys=request.keys)
             succeeded = sum(1 for v in results.values() if v)
             failed = len(results) - succeeded
 
@@ -190,13 +195,13 @@ async def delete_redis_key(request: RedisDeleteRequest = Body(...)):
 
         # 단일 작업
         elif request.key is not None:
-            if not await redis_service.exists(request.key):
+            if not await redis_db.service.exists(request.key):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Key '{request.key}' not found",
                 )
 
-            success = await redis_service.delete(request.key)
+            success = await redis_db.service.delete(request.key)
 
             if not success:
                 raise HTTPException(

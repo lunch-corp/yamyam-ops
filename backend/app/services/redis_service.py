@@ -1,19 +1,16 @@
-import json
 import logging
+import json
 from typing import Any, Dict, List, Optional
-from pathlib import Path
-
-from app.core.config import settings
-from app.core.redis_db import redis_db
 
 
 class RedisService:
-    def __init__(self):
-        self.max_batch_size = settings.redis_max_batch_size
+    def __init__(self, redis_client, max_batch_size: int = 100):
+        self.redis_client = redis_client
+        self.max_batch_size = max_batch_size
 
     async def _get_client(self):
-        """Get Redis client"""
-        return await redis_db.get_client()
+        # 이미 redis_client가 존재하면 그대로 반환
+        return self.redis_client
 
     async def create(
         self, items: Dict[str, Any], expire: Optional[int] = None
@@ -442,60 +439,21 @@ class RedisService:
             logging.error(f"Redis bulk delete error: {e}")
             raise
 
-    async def load_similar_restaurants_data(self, json_path: str) -> Dict[str, int]:
-        """
-        Load similar restaurants data from JSON file into Redis.
+    async def load_similar_restaurants_data(
+        self, data: Optional[dict] = None, from_memory: bool = False
+    ) -> Dict[str, Any]:
+        if not from_memory or not data:
+            return {"loaded": 0, "skipped": 0, "error": "No data provided"}
+        sample_key = "diner:2411227:similar_diner_ids"
+        existing = await self.read([sample_key])
+        if existing.get(sample_key) is not None:
+            return {"loaded": 0, "skipped": 0, "already_exists": True}
 
-        Args:
-            json_path: Path to similar_restaurants.json file
-
-        Returns:
-            Dictionary with statistics: {"loaded": count, "skipped": count}
-        """
-        try:
-            json_file = Path(json_path)
-            if not json_file.exists():
-                logging.warning(f"Similar restaurants file not found: {json_path}")
-                return {"loaded": 0, "skipped": 0, "error": "File not found"}
-
-            # Check if data already exists (sample check)
-            sample_key = "diner:101:similar_diner_ids"
-            existing = await self.read([sample_key])
-
-            if existing.get(sample_key) is not None:
-                logging.info("Similar restaurants data already exists in Redis")
-                return {"loaded": 0, "skipped": 0, "already_exists": True}
-
-            logging.info(f"Loading similar restaurants data from {json_path}...")
-
-            # Load JSON file
-            with open(json_file, "r", encoding="utf-8") as f:
-                similar_data = json.load(f)
-
-            # Prepare data for Redis
-            items = {}
-            for restaurant_id, similar_list in similar_data.items():
-                key = f"diner:{restaurant_id}:similar_diner_ids"
-                # Extract only IDs (first element of each pair)
-                value = [item[0] for item in similar_list]
-                items[key] = value
-
-            # Save to Redis with 7-day expiration
-            results = await self.create(items, expire=None)
-
-            succeeded = sum(1 for v in results.values() if v)
-            failed = len(results) - succeeded
-
-            logging.info(
-                f"✅ Similar restaurants data loaded: {succeeded} keys created, {failed} failed"
-            )
-
-            return {"loaded": succeeded, "skipped": failed}
-
-        except Exception as e:
-            logging.error(f"Failed to load similar restaurants data: {e}")
-            return {"loaded": 0, "skipped": 0, "error": str(e)}
-
-
-# Global service instance
-redis_service = RedisService()
+        items = {
+            f"diner:{rid}:similar_diner_ids": [v[0] for v in lst]
+            for rid, lst in data.items()
+        }
+        results = await self.create(items, expire=7 * 24 * 3600)
+        succeeded = sum(1 for v in results.values() if v)
+        failed = len(results) - succeeded
+        return {"loaded": succeeded, "skipped": failed}
