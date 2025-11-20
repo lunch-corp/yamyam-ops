@@ -35,8 +35,6 @@ async def lifespan(app: FastAPI):
     try:
         db.create_tables()
         logger.info("데이터베이스 테이블 초기화 완료")
-
-        db.list_tables()
     except Exception as e:
         logger.error(f"데이터베이스 초기화 실패: {e}")
         raise
