@@ -10,25 +10,26 @@ services:
       - "8000:8000"
     environment:
       # 데이터베이스 설정
-      DATABASE_URL: postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      FAISS_SERVER_URL: ${FAISS_SERVER_URL:-}
       
       # JWT 설정
-      JWT_SECRET_KEY: your-secret-key-here-change-in-production
-      JWT_ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       
       # 환경 설정
-      ENVIRONMENT: development
-      DEBUG: True
-      LOG_LEVEL: INFO
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-True}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       
       # CORS 설정
-      ALLOWED_ORIGINS: '["http://localhost:8501", "http://localhost:3000", "http://localhost"]'
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:8501", "http://localhost:3000", "http://localhost"]}
       
       # Firebase 설정
-      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-key.json
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/firebase-key.json}
       
       # 서버 설정
       WORKERS: ${WORKERS:-1}
@@ -49,19 +50,19 @@ services:
       retries: 3
 
   postgres:
-    image: postgres:15
+    image: postgis/postgis:15-3.4
     container_name: yamyam-postgres
     environment:
-      POSTGRES_USER: yamyam
-      POSTGRES_PASSWORD: yamyam_pass
-      POSTGRES_DB: yamyamdb
+      POSTGRES_USER: ${POSTGRES_USER:-yamyam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yamyam_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-yamyamdb}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U yamyam -d yamyamdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yamyam} -d ${POSTGRES_DB:-yamyamdb}"]
       interval: 10s
       timeout: 5s
       retries: 5

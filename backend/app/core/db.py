@@ -2,11 +2,10 @@ import logging
 from contextlib import contextmanager
 
 import psycopg2
+from app.core.config import settings
 from psycopg2.extras import RealDictCursor
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.core.config import settings
 
 
 class Database:

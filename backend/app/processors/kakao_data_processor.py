@@ -216,6 +216,27 @@ class KakaoDataProcessor:
             # 파싱 실패 시 원본 반환
             return x_str
 
+    # PostgreSQL INTEGER 범위: -2,147,483,648 ~ 2,147,483,647
+    INTEGER_MIN = -2147483648
+    INTEGER_MAX = 2147483647
+
+    @staticmethod
+    def _validate_integer_range(value, field_name: str = None):
+        """정수 값이 PostgreSQL INTEGER 범위 내인지 검증"""
+        if value is None:
+            return value
+
+        if (
+            value < KakaoDataProcessor.INTEGER_MIN
+            or value > KakaoDataProcessor.INTEGER_MAX
+        ):
+            field_info = f" ({field_name})" if field_name else ""
+            raise ValueError(
+                f"정수 값이 INTEGER 범위를 초과합니다{field_info}: "
+                f"{value} (범위: {KakaoDataProcessor.INTEGER_MIN} ~ {KakaoDataProcessor.INTEGER_MAX})"
+            )
+        return value
+
     TYPE_CONVERTERS = {
         "str": lambda x: str(x) if pd.notnull(x) else None,
         "str_optional": lambda x: str(x) if pd.notnull(x) and str(x).strip() else None,
@@ -388,7 +409,7 @@ class KakaoDataProcessor:
         field_mappings = config["field_mappings"]
 
         data = []
-        for _, row in df.iterrows():
+        for row_idx, (_, row) in enumerate(df.iterrows()):
             processed_row = []
 
             for field_name, data_type in field_mappings:
@@ -399,8 +420,22 @@ class KakaoDataProcessor:
                 if not converter:
                     raise ValueError(f"지원하지 않는 데이터 타입: {data_type}")
 
-                processed_value = converter(row[field_name])
-                processed_row.append(processed_value)
+                try:
+                    processed_value = converter(row[field_name])
+                    # INTEGER 타입인 경우 범위 검증 (BigInteger로 변경했지만 혹시 모를 경우 대비)
+                    # 실제로는 모델이 BigInteger이므로 검증은 선택사항
+                    processed_row.append(processed_value)
+                except (ValueError, OverflowError) as e:
+                    # 원본 행 인덱스 포함하여 오류 메시지 개선
+                    original_row_idx = (
+                        df.index[row_idx]
+                        if hasattr(df.index, "__getitem__")
+                        else row_idx
+                    )
+                    raise ValueError(
+                        f"행 {original_row_idx}, 필드 '{field_name}' 처리 실패: {str(e)}\n"
+                        f"원본 값: {row[field_name]}"
+                    ) from e
 
             data.append(tuple(processed_row))
 

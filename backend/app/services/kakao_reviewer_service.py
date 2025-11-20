@@ -34,13 +34,9 @@ class KakaoReviewerService(
         """카카오 리뷰어 생성"""
         try:
             with db.get_cursor() as (cursor, conn):
-                # ULID 생성 (Python ulid_utils.py 사용)
-                ulid = self._generate_ulid()
-
                 cursor.execute(
                     INSERT_KAKAO_REVIEWER,
                     (
-                        ulid,
                         data.reviewer_id,
                         data.reviewer_user_name,
                         data.reviewer_review_cnt,

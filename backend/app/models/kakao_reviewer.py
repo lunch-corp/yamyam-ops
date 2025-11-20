@@ -8,7 +8,7 @@ from .base import Base, ULIDMixin
 class KakaoReviewer(Base, ULIDMixin):
     __tablename__ = "kakao_reviewer"
 
-    reviewer_id = Column(Integer, unique=True, nullable=False, index=True)
+    reviewer_id = Column(String, unique=True, nullable=False, index=True)
     reviewer_user_name = Column(String(100))
     reviewer_review_cnt = Column(Integer, nullable=False)
     reviewer_avg = Column(Float, nullable=False)

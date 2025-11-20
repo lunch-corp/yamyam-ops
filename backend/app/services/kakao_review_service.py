@@ -7,7 +7,6 @@ from typing import List, Optional
 from app.core.db import db
 from app.database.kakao_queries import (
     CHECK_KAKAO_DINER_EXISTS_BY_IDX,
-    CHECK_KAKAO_REVIEW_DUPLICATE,
     CHECK_KAKAO_REVIEW_EXISTS,
     CHECK_KAKAO_REVIEWER_EXISTS,
     DELETE_KAKAO_REVIEW_BY_ID,
@@ -58,21 +57,10 @@ class KakaoReviewService(
                         detail="Kakao reviewer not found",
                     )
 
-                # 중복 리뷰 확인
-                if self._check_exists(CHECK_KAKAO_REVIEW_DUPLICATE, (data.review_id,)):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Kakao review already exists",
-                    )
-
-                # ULID 생성 (Python ulid_utils.py 사용)
-                ulid = self._generate_ulid()
-
-                # 리뷰 생성
+                # 리뷰 생성 (UPSERT로 변경되어 중복 확인 불필요)
                 cursor.execute(
                     INSERT_KAKAO_REVIEW,
                     (
-                        ulid,
                         data.diner_idx,
                         data.reviewer_id,
                         data.review_id,

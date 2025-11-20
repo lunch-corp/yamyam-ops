@@ -60,6 +60,7 @@ class FileProcessor:
             text = file_content.decode(encoding)
             # DataFrame으로 변환
             df = pd.read_csv(StringIO(text))
+            df.reset_index(drop=True, inplace=True)
             logger.info(f"CSV 파일 읽기 성공: {len(df)} 행")
             return df
         except UnicodeDecodeError:

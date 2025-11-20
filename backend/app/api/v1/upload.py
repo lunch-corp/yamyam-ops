@@ -5,9 +5,8 @@
 import logging
 from typing import Dict
 
-from fastapi import APIRouter, File, Query, UploadFile
-
 from app.services.upload_service import UploadService
+from fastapi import APIRouter, File, Query, UploadFile
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -27,16 +26,24 @@ async def upload_restaurant_basic_data(
     카카오 음식점 기본 정보 업로드
 
     diner_basic.csv 파일을 업로드하여 기본 음식점 정보를 등록합니다.
+    동일한 diner_idx가 이미 존재하는 경우 UPSERT로 새 데이터로 업데이트됩니다.
 
     **필수 컬럼:**
-    - diner_idx: 음식점 고유 인덱스 (int)
+    - diner_idx: 음식점 고유 인덱스 (int, unique)
     - diner_name: 음식점 이름 (str)
-    - diner_num_address: 지번 주소 (str)
+    - diner_tag: 음식점 태그 (str, 리스트 형식은 쉼표로 변환됨)
+    - diner_menu_name: 메뉴 이름 (str, 리스트 형식은 쉼표로 변환됨)
+    - diner_menu_price: 메뉴 가격 (str, 리스트 형식은 쉼표로 변환됨)
+    - diner_review_cnt: 리뷰 개수 (str)
+    - diner_review_avg: 리뷰 평균 평점 (float, nullable)
+    - diner_blog_review_cnt: 블로그 리뷰 개수 (float, nullable)
+    - diner_review_tags: 리뷰 태그 (str, 리스트 형식은 쉼표로 변환됨)
     - diner_road_address: 도로명 주소 (str)
+    - diner_num_address: 지번 주소 (str)
     - diner_phone: 전화번호 (str)
+    - diner_lat: 위도 (float)
+    - diner_lon: 경도 (float)
     - diner_open_time: 영업시간 (str)
-    - diner_lat: 위도 (float, nullable)
-    - diner_lon: 경도 (float, nullable)
 
     dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
     """
@@ -164,9 +171,10 @@ async def upload_reviewers(
     카카오 리뷰어 정보 업로드
 
     reviewers.csv 파일을 업로드하여 리뷰어 정보를 등록합니다.
+    동일한 reviewer_id가 이미 존재하는 경우 UPSERT로 새 데이터로 업데이트됩니다.
 
     **필수 컬럼:**
-    - reviewer_id: 리뷰어 고유 ID (int)
+    - reviewer_id: 리뷰어 고유 ID (int, unique)
     - reviewer_review_cnt: 리뷰 개수 (int)
     - reviewer_avg: 평균 평점 (float)
     - badge_grade: 배지 등급 (str)
@@ -189,11 +197,12 @@ async def upload_reviews(
     카카오 리뷰 정보 업로드
 
     reviews.csv 파일을 업로드하여 리뷰 정보를 등록합니다.
+    동일한 review_id가 이미 존재하는 경우 UPSERT로 새 데이터로 업데이트됩니다.
 
     **필수 컬럼:**
     - diner_idx: 음식점 고유 인덱스 (int)
     - reviewer_id: 리뷰어 고유 ID (int)
-    - review_id: 리뷰 고유 ID (int)
+    - review_id: 리뷰 고유 ID (int, unique)
     - reviewer_review_score: 리뷰 평점 (float)
 
     **선택 컬럼:**
