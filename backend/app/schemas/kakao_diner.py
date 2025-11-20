@@ -67,5 +67,9 @@ class KakaoDinerResponse(BaseModel):
     diner_phone: Optional[str]
     diner_lat: float
     diner_lon: float
+    diner_category_large: Optional[str]
+    diner_category_middle: Optional[str]
+    diner_category_small: Optional[str]
+    diner_category_detail: Optional[str]
     crawled_at: str
     updated_at: str

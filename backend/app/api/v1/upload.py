@@ -101,6 +101,7 @@ async def upload_restaurant_reviews(
 
     **필수 컬럼:**
     - diner_idx: 음식점 고유 인덱스 (int)
+    - review_id: 리뷰 고유 ID (int)
     - diner_review_cnt: 리뷰 개수 (int, 기본값: 0)
     - diner_review_avg: 리뷰 평점 (float, 기본값: 0.0)
     - diner_blog_review_cnt: 블로그 리뷰 개수 (float, 기본값: 0.0)
@@ -152,3 +153,53 @@ async def bulk_upload_restaurant_data(
     return await upload_service.bulk_upload_all_files(
         diner_basic, diner_categories, diner_menus, diner_reviews, diner_tags, dry_run
     )
+
+
+@router.post("/kakao/reviewers", tags=["uploads"], summary="리뷰어 정보 업로드")
+async def upload_reviewers(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> Dict:
+    """
+    카카오 리뷰어 정보 업로드
+
+    reviewers.csv 파일을 업로드하여 리뷰어 정보를 등록합니다.
+
+    **필수 컬럼:**
+    - reviewer_id: 리뷰어 고유 ID (int)
+    - reviewer_review_cnt: 리뷰 개수 (int)
+    - reviewer_avg: 평균 평점 (float)
+    - badge_grade: 배지 등급 (str)
+    - badge_level: 배지 레벨 (int)
+
+    **선택 컬럼:**
+    - reviewer_user_name: 리뷰어 사용자명 (str)
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_reviewers(file, dry_run)
+
+
+@router.post("/kakao/reviews", tags=["uploads"], summary="리뷰 정보 업로드")
+async def upload_reviews(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> Dict:
+    """
+    카카오 리뷰 정보 업로드
+
+    reviews.csv 파일을 업로드하여 리뷰 정보를 등록합니다.
+
+    **필수 컬럼:**
+    - diner_idx: 음식점 고유 인덱스 (int)
+    - reviewer_id: 리뷰어 고유 ID (int)
+    - review_id: 리뷰 고유 ID (int)
+    - reviewer_review_score: 리뷰 평점 (float)
+
+    **선택 컬럼:**
+    - reviewer_review: 리뷰 내용 (str, nullable - 빈 값 허용)
+    - reviewer_review_date: 리뷰 작성일 (str, nullable - 날짜 형식 권장: YYYY-MM-DD)
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_reviews(file, dry_run)

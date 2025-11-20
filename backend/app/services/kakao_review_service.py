@@ -6,16 +6,16 @@ from typing import List, Optional
 
 from app.core.db import db
 from app.database.kakao_queries import (
-    CHECK_KAKAO_DINER_EXISTS_BY_PLACE_ID,
+    CHECK_KAKAO_DINER_EXISTS_BY_IDX,
     CHECK_KAKAO_REVIEW_DUPLICATE,
     CHECK_KAKAO_REVIEW_EXISTS,
     CHECK_KAKAO_REVIEWER_EXISTS,
-    DELETE_KAKAO_REVIEW_BY_REVIEW_ID,
+    DELETE_KAKAO_REVIEW_BY_ID,
     GET_ALL_KAKAO_REVIEWS,
-    GET_KAKAO_REVIEW_BY_REVIEW_ID,
+    GET_KAKAO_REVIEW_BY_ID,
     GET_KAKAO_REVIEWS_BASE_QUERY,
     INSERT_KAKAO_REVIEW,
-    UPDATE_KAKAO_REVIEW_BY_REVIEW_ID,
+    UPDATE_KAKAO_REVIEW_BY_ID,
 )
 from app.schemas.kakao_review import (
     KakaoReviewCreate,
@@ -33,7 +33,7 @@ class KakaoReviewService(
     """카카오 리뷰 서비스"""
 
     def __init__(self):
-        super().__init__("kakao_review", "kakao_review_id")
+        super().__init__("kakao_review", "review_id")
 
     def create(self, data: KakaoReviewCreate) -> KakaoReviewResponse:
         """카카오 리뷰 생성"""
@@ -41,8 +41,8 @@ class KakaoReviewService(
             with db.get_cursor() as (cursor, conn):
                 # 음식점 존재 확인
                 if not self._check_exists(
-                    CHECK_KAKAO_DINER_EXISTS_BY_PLACE_ID,
-                    (data.kakao_place_id,),
+                    CHECK_KAKAO_DINER_EXISTS_BY_IDX,
+                    (data.diner_idx,),
                 ):
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -51,7 +51,7 @@ class KakaoReviewService(
 
                 # 리뷰어 존재 확인
                 if not self._check_exists(
-                    CHECK_KAKAO_REVIEWER_EXISTS, (data.kakao_user_id,)
+                    CHECK_KAKAO_REVIEWER_EXISTS, (data.reviewer_id,)
                 ):
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -59,31 +59,26 @@ class KakaoReviewService(
                     )
 
                 # 중복 리뷰 확인
-                if self._check_exists(
-                    CHECK_KAKAO_REVIEW_DUPLICATE, (data.kakao_review_id,)
-                ):
+                if self._check_exists(CHECK_KAKAO_REVIEW_DUPLICATE, (data.review_id,)):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Kakao review already exists",
                     )
 
                 # ULID 생성 (Python ulid_utils.py 사용)
-                review_id = self._generate_ulid()
+                ulid = self._generate_ulid()
 
                 # 리뷰 생성
                 cursor.execute(
                     INSERT_KAKAO_REVIEW,
                     (
-                        review_id,
-                        data.kakao_review_id,
-                        data.kakao_place_id,
-                        data.kakao_user_id,
-                        data.rating,
-                        data.review_text,
-                        data.review_images,
-                        data.visit_date,
-                        data.visit_type,
-                        data.helpful_count,
+                        ulid,
+                        data.diner_idx,
+                        data.reviewer_id,
+                        data.review_id,
+                        data.reviewer_review,
+                        data.reviewer_review_date,
+                        data.reviewer_review_score,
                     ),
                 )
 
@@ -95,9 +90,9 @@ class KakaoReviewService(
         except Exception as e:
             self._handle_exception("creating kakao review", e)
 
-    def get_by_id(self, kakao_review_id: str) -> KakaoReviewWithDetails:
+    def get_by_id(self, review_id: int) -> KakaoReviewWithDetails:
         """카카오 리뷰 상세 조회 (상세 정보 포함)"""
-        result = self._execute_query(GET_KAKAO_REVIEW_BY_REVIEW_ID, (kakao_review_id,))
+        result = self._execute_query(GET_KAKAO_REVIEW_BY_ID, (review_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -108,53 +103,56 @@ class KakaoReviewService(
 
     def get_list(
         self,
-        skip: int = 0,
-        limit: int = 100,
-        kakao_place_id: Optional[str] = None,
-        kakao_user_id: Optional[str] = None,
-        min_rating: Optional[int] = None,
+        skip: Optional[int] = 0,
+        limit: Optional[int] = 100,
+        diner_idx: Optional[int] = None,
+        reviewer_id: Optional[int] = None,
+        min_rating: Optional[float] = None,
     ) -> List[KakaoReviewWithDetails]:
         """카카오 리뷰 목록 조회 (상세 정보 포함)"""
-        # 필터링이 필요한 경우 동적 쿼리 사용, 그렇지 않으면 정적 쿼리 사용
-        if kakao_place_id or kakao_user_id or min_rating is not None:
+        # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
+        if diner_idx or reviewer_id or min_rating is not None:
             query = GET_KAKAO_REVIEWS_BASE_QUERY
 
             conditions = []
             params = []
 
-            if kakao_place_id:
-                conditions.append("kr.kakao_place_id = %s")
-                params.append(kakao_place_id)
+            if diner_idx:
+                conditions.append("kr.diner_idx = %s")
+                params.append(diner_idx)
 
-            if kakao_user_id:
-                conditions.append("kr.kakao_user_id = %s")
-                params.append(kakao_user_id)
+            if reviewer_id:
+                conditions.append("kr.reviewer_id = %s")
+                params.append(reviewer_id)
 
             if min_rating is not None:
-                conditions.append("kr.rating >= %s")
+                conditions.append("kr.reviewer_review_score >= %s")
                 params.append(min_rating)
 
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
 
-            query += (
-                " ORDER BY kr.helpful_count DESC, kr.crawled_at DESC LIMIT %s OFFSET %s"
-            )
+            query += " ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC LIMIT %s OFFSET %s"
             params.extend([limit, skip])
 
             results = self._execute_query_all(query, tuple(params))
         else:
-            # 필터링이 없는 경우 정적 쿼리 사용
-            results = self._execute_query_all(GET_ALL_KAKAO_REVIEWS, (limit, skip))
+            if skip is None and limit is None:
+                results = self._execute_query_all(GET_ALL_KAKAO_REVIEWS, ())
+            else:
+                # 페이지네이션이 필요한 경우
+                from app.database.kakao_queries import GET_ALL_KAKAO_REVIEWS_PAGINATED
+
+                results = self._execute_query_all(
+                    GET_ALL_KAKAO_REVIEWS_PAGINATED, (limit, skip)
+                )
 
         return [self._convert_to_details_response(row) for row in results]
 
-    def update(
-        self, kakao_review_id: str, data: KakaoReviewUpdate
-    ) -> KakaoReviewResponse:
+    def update(self, review_id: int, data: KakaoReviewUpdate) -> KakaoReviewResponse:
         """카카오 리뷰 정보 업데이트"""
         # 리뷰 존재 확인
-        if not self._check_exists(CHECK_KAKAO_REVIEW_EXISTS, (kakao_review_id,)):
+        if not self._check_exists(CHECK_KAKAO_REVIEW_EXISTS, (review_id,)):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Kakao review not found",
@@ -163,31 +161,24 @@ class KakaoReviewService(
         # 업데이트할 필드와 값 구성
         update_values = []
         field_mapping = {
-            "rating": data.rating,
-            "review_text": data.review_text,
-            "review_images": data.review_images,
-            "visit_date": data.visit_date,
-            "visit_type": data.visit_type,
-            "helpful_count": data.helpful_count,
+            "reviewer_review": data.reviewer_review,
+            "reviewer_review_date": data.reviewer_review_date,
+            "reviewer_review_score": data.reviewer_review_score,
         }
 
         for field, value in field_mapping.items():
             if value is not None:
                 update_values.append(value)
 
-        # kakao_review_id를 마지막에 추가
-        update_values.append(kakao_review_id)
+        # review_id를 마지막에 추가
+        update_values.append(review_id)
 
-        result = self._execute_query(
-            UPDATE_KAKAO_REVIEW_BY_REVIEW_ID, tuple(update_values)
-        )
+        result = self._execute_query(UPDATE_KAKAO_REVIEW_BY_ID, tuple(update_values))
         return self._convert_to_response(result)
 
-    def delete(self, kakao_review_id: str) -> dict:
+    def delete(self, review_id: int) -> dict:
         """카카오 리뷰 삭제"""
-        result = self._execute_query(
-            DELETE_KAKAO_REVIEW_BY_REVIEW_ID, (kakao_review_id,)
-        )
+        result = self._execute_query(DELETE_KAKAO_REVIEW_BY_ID, (review_id,))
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -201,14 +192,12 @@ class KakaoReviewService(
         return KakaoReviewResponse(
             id=row["id"],
             kakao_review_id=row["kakao_review_id"],
-            kakao_place_id=row["kakao_place_id"],
-            kakao_user_id=row["kakao_user_id"],
-            rating=row["rating"],
-            review_text=row["review_text"],
-            review_images=row["review_images"],
-            visit_date=row["visit_date"],
-            visit_type=row["visit_type"],
-            helpful_count=row["helpful_count"],
+            diner_idx=row["diner_idx"],
+            reviewer_id=row["reviewer_id"],
+            review_id=row["review_id"],
+            reviewer_review=row.get("reviewer_review"),
+            reviewer_review_date=row.get("reviewer_review_date"),
+            reviewer_review_score=row["reviewer_review_score"],
             crawled_at=row["crawled_at"].isoformat(),
             updated_at=row["updated_at"].isoformat(),
         )
@@ -218,17 +207,15 @@ class KakaoReviewService(
         return KakaoReviewWithDetails(
             id=row["id"],
             kakao_review_id=row["kakao_review_id"],
-            kakao_place_id=row["kakao_place_id"],
-            kakao_user_id=row["kakao_user_id"],
-            rating=row["rating"],
-            review_text=row["review_text"],
-            review_images=row["review_images"],
-            visit_date=row["visit_date"],
-            visit_type=row["visit_type"],
-            helpful_count=row["helpful_count"],
+            diner_idx=row["diner_idx"],
+            reviewer_id=row["reviewer_id"],
+            review_id=row["review_id"],
+            reviewer_review=row.get("reviewer_review"),
+            reviewer_review_date=row.get("reviewer_review_date"),
+            reviewer_review_score=row["reviewer_review_score"],
             crawled_at=row["crawled_at"].isoformat(),
             updated_at=row["updated_at"].isoformat(),
-            diner_name=row["diner_name"],
-            diner_category=row["diner_category"],
-            reviewer_nickname=row["reviewer_nickname"],
+            diner_name=row.get("diner_name"),
+            diner_tag=row.get("diner_tag"),
+            reviewer_user_name=row.get("reviewer_user_name"),
         )

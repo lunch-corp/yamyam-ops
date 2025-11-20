@@ -40,12 +40,21 @@ def create_restaurant(
 def list_restaurants(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    category: Optional[str] = None,
+    diner_category_large: Optional[str] = None,
+    diner_category_middle: Optional[str] = None,
+    diner_category_small: Optional[str] = None,
+    diner_category_detail: Optional[str] = None,
     min_rating: Optional[float] = None,
 ):
     """카카오 음식점 목록 조회"""
     return diner_service.get_list(
-        skip=skip, limit=limit, category=category, min_rating=min_rating
+        skip=skip,
+        limit=limit,
+        diner_category_large=diner_category_large,
+        diner_category_middle=diner_category_middle,
+        diner_category_small=diner_category_small,
+        diner_category_detail=diner_category_detail,
+        min_rating=min_rating,
     )
 
 

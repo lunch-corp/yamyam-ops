@@ -132,6 +132,57 @@ class KakaoDataProcessor:
             "sql_fields": ["diner_tag", "diner_review_tags", "diner_idx"],
             "query_name": "UPDATE_KAKAO_DINER_TAGS",
         },
+        "reviewers": {
+            "required_columns": [
+                "reviewer_id",
+                "reviewer_review_cnt",
+                "reviewer_avg",
+                "badge_grade",
+                "badge_level",
+            ],
+            "field_mappings": [
+                ("reviewer_id", "int"),
+                ("reviewer_user_name", "str"),
+                ("reviewer_review_cnt", "int"),
+                ("reviewer_avg", "float"),
+                ("badge_grade", "str"),
+                ("badge_level", "int"),
+            ],
+            "sql_fields": [
+                "reviewer_id",
+                "reviewer_user_name",
+                "reviewer_review_cnt",
+                "reviewer_avg",
+                "badge_grade",
+                "badge_level",
+            ],
+            "query_name": "INSERT_KAKAO_REVIEWER",
+        },
+        "reviews": {
+            "required_columns": [
+                "diner_idx",
+                "reviewer_id",
+                "review_id",
+                "reviewer_review_score",
+            ],
+            "field_mappings": [
+                ("diner_idx", "int"),
+                ("reviewer_id", "int"),
+                ("review_id", "int"),
+                ("reviewer_review", "str_optional"),
+                ("reviewer_review_date", "date_str"),
+                ("reviewer_review_score", "float"),
+            ],
+            "sql_fields": [
+                "diner_idx",
+                "reviewer_id",
+                "review_id",
+                "reviewer_review",
+                "reviewer_review_date",
+                "reviewer_review_score",
+            ],
+            "query_name": "INSERT_KAKAO_REVIEW",
+        },
     }
 
     # 데이터 타입 변환 함수들
@@ -167,11 +218,15 @@ class KakaoDataProcessor:
 
     TYPE_CONVERTERS = {
         "str": lambda x: str(x) if pd.notnull(x) else None,
+        "str_optional": lambda x: str(x) if pd.notnull(x) and str(x).strip() else None,
         "int": lambda x: int(x) if pd.notnull(x) else None,
         "float": lambda x: float(x) if pd.notnull(x) else None,
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
         "float_default_zero": lambda x: float(x) if pd.notnull(x) else 0.0,
+        "date_str": lambda x: str(x).strip()
+        if pd.notnull(x) and str(x).strip()
+        else None,
         "list_to_comma": lambda x: KakaoDataProcessor.convert_list_string_to_comma_separated(
             x
         ),

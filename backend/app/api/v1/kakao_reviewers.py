@@ -50,30 +50,28 @@ def list_reviewers(
 
 
 @router.get(
-    "/{kakao_user_id}",
+    "/{reviewer_id}",
     response_model=KakaoReviewerResponse,
     tags=["kakao-reviewers"],
     summary="카카오 리뷰어 상세 조회",
 )
-def get_reviewer(kakao_user_id: str):
+def get_reviewer(reviewer_id: int):
     """특정 카카오 리뷰어 상세 조회"""
-    return reviewer_service.get_by_id(kakao_user_id)
+    return reviewer_service.get_by_id(reviewer_id)
 
 
 @router.put(
-    "/{kakao_user_id}",
+    "/{reviewer_id}",
     response_model=KakaoReviewerResponse,
     tags=["kakao-reviewers"],
     summary="카카오 리뷰어 수정",
 )
-def update_reviewer(kakao_user_id: str, reviewer_update: KakaoReviewerUpdate):
+def update_reviewer(reviewer_id: int, reviewer_update: KakaoReviewerUpdate):
     """카카오 리뷰어 정보 수정"""
-    return reviewer_service.update(kakao_user_id, reviewer_update)
+    return reviewer_service.update(reviewer_id, reviewer_update)
 
 
-@router.delete(
-    "/{kakao_user_id}", tags=["kakao-reviewers"], summary="카카오 리뷰어 삭제"
-)
-def delete_reviewer(kakao_user_id: str):
+@router.delete("/{reviewer_id}", tags=["kakao-reviewers"], summary="카카오 리뷰어 삭제")
+def delete_reviewer(reviewer_id: int):
     """카카오 리뷰어 삭제"""
-    return reviewer_service.delete(kakao_user_id)
+    return reviewer_service.delete(reviewer_id)

@@ -160,6 +160,14 @@ class UploadService:
         """diner_tags.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_tags", dry_run)
 
+    async def upload_reviewers(self, file: UploadFile, dry_run: bool = False) -> Dict:
+        """reviewers.csv 파일 업로드"""
+        return await self._upload_csv_file(file, "reviewers", dry_run)
+
+    async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> Dict:
+        """reviews.csv 파일 업로드"""
+        return await self._upload_csv_file(file, "reviews", dry_run)
+
     def add_new_file_type(
         self,
         file_type: str,

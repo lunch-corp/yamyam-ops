@@ -8,7 +8,6 @@ from .base import Base, ULIDMixin
 class KakaoReview(Base, ULIDMixin):
     __tablename__ = "kakao_review"
 
-    kakao_review_id = Column(String(50), unique=True, nullable=False, index=True)
     diner_idx = Column(
         Integer, ForeignKey("kakao_diner.diner_idx"), nullable=False, index=True
     )

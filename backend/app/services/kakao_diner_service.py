@@ -82,12 +82,25 @@ class KakaoDinerService(
         self,
         skip: int = 0,
         limit: int = 100,
-        diner_tag: Optional[str] = None,
+        diner_category_large: Optional[str] = None,
+        diner_category_middle: Optional[str] = None,
+        diner_category_small: Optional[str] = None,
+        diner_category_detail: Optional[str] = None,
         min_rating: Optional[float] = None,
     ) -> List[KakaoDinerResponse]:
         """카카오 음식점 목록 조회"""
         # 필터링이 필요한 경우 동적 쿼리 사용, 그렇지 않으면 정적 쿼리 사용
-        if diner_tag or min_rating is not None:
+        if (
+            any(
+                [
+                    diner_category_large,
+                    diner_category_middle,
+                    diner_category_small,
+                    diner_category_detail,
+                ]
+            )
+            or min_rating is not None
+        ):
             fields = [
                 "id",
                 "diner_idx",
@@ -105,6 +118,10 @@ class KakaoDinerService(
                 "diner_lat",
                 "diner_lon",
                 "diner_open_time",
+                "diner_category_large",
+                "diner_category_middle",
+                "diner_category_small",
+                "diner_category_detail",
                 "crawled_at",
                 "updated_at",
             ]
@@ -112,9 +129,18 @@ class KakaoDinerService(
             conditions = []
             params = []
 
-            if diner_tag:
-                conditions.append("diner_tag LIKE %s")
-                params.append(f"%{diner_tag}%")
+            if diner_category_large:
+                conditions.append("diner_category_large LIKE %s")
+                params.append(f"%{diner_category_large}%")
+            if diner_category_middle:
+                conditions.append("diner_category_middle LIKE %s")
+                params.append(f"%{diner_category_middle}%")
+            if diner_category_small:
+                conditions.append("diner_category_small LIKE %s")
+                params.append(f"%{diner_category_small}%")
+            if diner_category_detail:
+                conditions.append("diner_category_detail LIKE %s")
+                params.append(f"%{diner_category_detail}%")
 
             if min_rating is not None:
                 conditions.append("diner_review_avg >= %s")
@@ -202,6 +228,10 @@ class KakaoDinerService(
             diner_phone=row.get("diner_phone"),
             diner_lat=row["diner_lat"],
             diner_lon=row["diner_lon"],
+            diner_category_large=row.get("diner_category_large"),
+            diner_category_middle=row.get("diner_category_middle"),
+            diner_category_small=row.get("diner_category_small"),
+            diner_category_detail=row.get("diner_category_detail"),
             crawled_at=row["crawled_at"].isoformat(),
             updated_at=row["updated_at"].isoformat(),
         )

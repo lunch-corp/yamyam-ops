@@ -8,7 +8,6 @@ from .base import Base, ULIDMixin
 class KakaoReviewer(Base, ULIDMixin):
     __tablename__ = "kakao_reviewer"
 
-    kakao_user_id = Column(String(50), unique=True, nullable=False, index=True)
     reviewer_id = Column(Integer, unique=True, nullable=False, index=True)
     reviewer_user_name = Column(String(100))
     reviewer_review_cnt = Column(Integer, nullable=False)
