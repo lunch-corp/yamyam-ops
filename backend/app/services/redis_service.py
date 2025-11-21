@@ -1,5 +1,7 @@
-import logging
+import os
 import json
+import logging
+import subprocess
 from typing import Any, Dict, List, Optional
 
 
@@ -11,6 +13,43 @@ class RedisService:
     async def _get_client(self):
         # 이미 redis_client가 존재하면 그대로 반환
         return self.redis_client
+
+    async def initialize_data(self):
+        try:
+            host = os.getenv("REMOTE_JSON_HOST")
+            port = os.getenv("REMOTE_JSON_PORT")
+            user = os.getenv("REMOTE_JSON_USER")
+            pw = os.getenv("REMOTE_JSON_PASS")
+            remote_path = os.getenv("REMOTE_JSON_PATH")
+
+            if not all([host, port, user, pw, remote_path]):
+                logging.warning(
+                    "Remote JSON server environment variables are not fully set"
+                )
+                return {"error": "missing_env"}
+
+            logging.info("Fetching similar restaurants JSON from remote server...")
+            cmd = (
+                f"sshpass -p {pw} ssh -p {port} "
+                f"-o StrictHostKeyChecking=no {user}@{host} cat {remote_path}"
+            )
+
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, check=True
+            )
+            similar_data = json.loads(result.stdout)
+
+            # Load into Redis
+            return await self.load_similar_restaurants_data(
+                similar_data, from_memory=True
+            )
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to fetch JSON from remote server: {e.stderr}")
+            return {"error": "fetch_failed"}
+        except Exception as e:
+            logging.error(f"Redis data initialization error: {e}")
+            return {"error": "unexpected_error"}
 
     async def create(
         self, items: Dict[str, Any], expire: Optional[int] = None

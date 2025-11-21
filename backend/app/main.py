@@ -43,8 +43,9 @@ async def lifespan(app: FastAPI):
     try:
         is_connected = await redis_db.ping()
         if is_connected:
+            await redis_db.get_client()
+            await redis_db.service.initialize_data()
             logger.info("Redis 연결 성공")
-            await redis_db.initialize_data()
         else:
             logger.warning("Redis 연결 실패 - Redis 기능이 제한될 수 있습니다")
     except Exception as e:

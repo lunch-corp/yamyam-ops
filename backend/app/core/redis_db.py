@@ -1,8 +1,4 @@
-import os
-import json
 import logging
-import subprocess
-
 import redis.asyncio as aioredis
 from app.core.config import settings
 from app.services.redis_service import RedisService
@@ -39,37 +35,6 @@ class RedisDatabase:
             await self._client.close()
             self._client = None
             self.service = None
-
-    async def initialize_data(self):
-        try:
-            host = os.getenv("REMOTE_JSON_HOST")
-            port = os.getenv("REMOTE_JSON_PORT")
-            user = os.getenv("REMOTE_JSON_USER")
-            pw = os.getenv("REMOTE_JSON_PASS")
-            remote_path = os.getenv("REMOTE_JSON_PATH")
-
-            if not all([host, port, user, pw, remote_path]):
-                logging.warning(
-                    "Remote JSON server environment variables are not fully set"
-                )
-                return
-
-            logging.info("Fetching similar restaurants JSON from remote server...")
-            cmd = f"sshpass -p {pw} ssh -p {port} -o StrictHostKeyChecking=no {user}@{host} cat {remote_path}"
-            result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, check=True
-            )
-            similar_data = json.loads(result.stdout)
-
-            await self.get_client()
-            if self.service:
-                await self.service.load_similar_restaurants_data(
-                    similar_data, from_memory=True
-                )
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to fetch JSON from remote server: {e.stderr}")
-        except Exception as e:
-            logging.error(f"Redis data initialization error: {e}")
 
 
 # Global Redis instance
