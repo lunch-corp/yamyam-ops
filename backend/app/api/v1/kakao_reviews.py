@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Query
 
@@ -31,16 +30,16 @@ def create_review(review: KakaoReviewCreate):
 
 @router.get(
     "/",
-    response_model=List[KakaoReviewWithDetails],
+    response_model=list[KakaoReviewWithDetails],
     tags=["kakao-reviews"],
     summary="카카오 리뷰 목록 조회",
 )
 def list_reviews(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    diner_idx: Optional[int] = None,
-    reviewer_id: Optional[int] = None,
-    min_rating: Optional[float] = None,
+    diner_idx: int | None = None,
+    reviewer_id: int | None = None,
+    min_rating: float | None = None,
 ):
     """카카오 리뷰 목록 조회"""
     return review_service.get_list(

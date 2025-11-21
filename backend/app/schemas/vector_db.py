@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +19,7 @@ class Vector(BaseModel):
     id: str = Field(
         ..., min_length=1, description="벡터의 고유 ID. 유저 ID 또는 식당 ID"
     )
-    embedding: List[float] = Field(..., min_length=1, description="임베딩 벡터")
+    embedding: list[float] = Field(..., min_length=1, description="임베딩 벡터")
 
 
 class StoreVectorsRequest(BaseModel):
@@ -29,7 +28,7 @@ class StoreVectorsRequest(BaseModel):
     vector_type: VectorType = Field(
         ..., description="벡터 타입 (user_cf_vec, user_n2v_vec, diner_n2v_vec)"
     )
-    vectors: List[Vector] = Field(..., min_length=1, description="추가할 벡터 리스트")
+    vectors: list[Vector] = Field(..., min_length=1, description="추가할 벡터 리스트")
     normalize: bool = Field(
         default=True, description="벡터를 정규화할지 여부 (기본값: True)"
     )
@@ -59,13 +58,13 @@ class SimilarRequest(BaseModel):
         ..., description="검색할 벡터 타입 (user_cf_vec, user_n2v_vec, diner_n2v_vec)"
     )
     query_id: str = Field(..., min_length=1, description="유사도를 계산할 쿼리 ID")
-    query_vector: List[float] = Field(
+    query_vector: list[float] = Field(
         ...,
         min_length=1,
         description="쿼리 벡터 (유저가 식당에 부여한 점수 벡터 또는 유저 임베딩 벡터)",
     )
     top_k: int = Field(default=5, ge=1, le=50, description="반환할 검색 결과의 수")
-    filtering_ids: List[str] = Field(
+    filtering_ids: list[str] = Field(
         default_factory=list,
         description="필터링할 ID 리스트 (검색 결과에서 제외할 ID들)",
     )
@@ -89,4 +88,4 @@ class SimilarResult(BaseModel):
 
 class SimilarResponse(BaseModel):
     query_id: str
-    neighbors: List[SimilarResult]
+    neighbors: list[SimilarResult]

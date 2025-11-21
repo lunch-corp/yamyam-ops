@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import redis.asyncio as aioredis
 from app.core.config import settings
@@ -8,7 +7,7 @@ from app.core.config import settings
 class RedisDatabase:
     def __init__(self):
         self.redis_url = settings.redis_url
-        self._client: Optional[aioredis.Redis] = None
+        self._client: aioredis.Redis | None = None
 
     async def get_client(self) -> aioredis.Redis:
         """Returns async Redis client"""
@@ -37,6 +36,7 @@ class RedisDatabase:
         """Initialize Redis with similar restaurants data"""
         try:
             from pathlib import Path
+
             from app.services.redis_service import redis_service
 
             # Path to similar_restaurants.json

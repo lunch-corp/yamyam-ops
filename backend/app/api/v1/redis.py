@@ -1,5 +1,7 @@
 import logging
 
+from fastapi import APIRouter, Body, HTTPException, status
+
 from app.schemas.redis_schemas import (
     RedisCreateRequest,
     RedisDeleteRequest,
@@ -9,7 +11,6 @@ from app.schemas.redis_schemas import (
     RedisUpdateRequest,
 )
 from app.services.redis_service import redis_service
-from fastapi import APIRouter, Body, HTTPException, status
 
 router = APIRouter()
 

@@ -3,7 +3,7 @@ Kakao 데이터 처리 전용 클래스 - 설정 기반 처리
 """
 
 import ast
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
 
 import pandas as pd
 
@@ -254,14 +254,14 @@ class KakaoDataProcessor:
     }
 
     @classmethod
-    def get_required_columns(cls, file_type: str) -> List[str]:
+    def get_required_columns(cls, file_type: str) -> list[str]:
         """파일 타입별 필수 컬럼 반환"""
         if file_type not in cls.PROCESSING_CONFIG:
             raise ValueError(f"지원하지 않는 파일 타입: {file_type}")
         return cls.PROCESSING_CONFIG[file_type]["required_columns"]
 
     @classmethod
-    def get_sql_fields(cls, file_type: str) -> List[str]:
+    def get_sql_fields(cls, file_type: str) -> list[str]:
         """파일 타입별 SQL 필드 반환"""
         if file_type not in cls.PROCESSING_CONFIG:
             raise ValueError(f"지원하지 않는 파일 타입: {file_type}")
@@ -352,7 +352,7 @@ class KakaoDataProcessor:
             raise ValueError(f"지원하지 않는 작업 타입: {operation}")
 
     @classmethod
-    def validate_config_consistency(cls, file_type: str) -> Dict[str, bool]:
+    def validate_config_consistency(cls, file_type: str) -> dict[str, bool]:
         """
         설정의 일관성 검증
 
@@ -391,7 +391,7 @@ class KakaoDataProcessor:
         return {"valid": True, "message": "설정이 일관성 있게 구성됨"}
 
     @classmethod
-    def process_file(cls, file_type: str, df: pd.DataFrame) -> List[Tuple]:
+    def process_file(cls, file_type: str, df: pd.DataFrame) -> list[tuple]:
         """
         설정 기반 파일 처리
 
@@ -443,27 +443,27 @@ class KakaoDataProcessor:
 
     # 기존 메서드들을 새로운 구조로 래핑 (하위 호환성 유지)
     @classmethod
-    def process_diner_basic(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_basic(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_basic.csv 데이터 처리"""
         return cls.process_file("diner_basic", df)
 
     @classmethod
-    def process_diner_categories(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_categories(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_categories.csv 데이터 처리"""
         return cls.process_file("diner_categories", df)
 
     @classmethod
-    def process_diner_menus(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_menus(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_menus.csv 데이터 처리"""
         return cls.process_file("diner_menus", df)
 
     @classmethod
-    def process_diner_reviews(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_reviews(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_reviews.csv 데이터 처리"""
         return cls.process_file("diner_reviews", df)
 
     @classmethod
-    def process_diner_tags(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_tags(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_tags.csv 데이터 처리"""
         return cls.process_file("diner_tags", df)
 
@@ -471,8 +471,8 @@ class KakaoDataProcessor:
     def add_new_file_type(
         cls,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
     ) -> None:
         """
         새로운 파일 타입 추가

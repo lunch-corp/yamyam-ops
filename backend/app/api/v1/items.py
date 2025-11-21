@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -47,12 +46,12 @@ def create_item(item: ItemCreate):
 
 
 @router.get(
-    "/", response_model=List[ItemResponse], tags=["items"], summary="아이템 목록 조회"
+    "/", response_model=list[ItemResponse], tags=["items"], summary="아이템 목록 조회"
 )
 def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    category: Optional[str] = None,
+    category: str | None = None,
 ):
     """아이템 목록 조회"""
     try:

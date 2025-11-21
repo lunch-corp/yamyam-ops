@@ -1,13 +1,11 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
 class ItemBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    category: Optional[str] = Field(None, max_length=100)
-    description: Optional[str] = None
-    location: Optional[str] = Field(None, max_length=255)
+    category: str | None = Field(None, max_length=100)
+    description: str | None = None
+    location: str | None = Field(None, max_length=255)
 
 
 class ItemCreate(ItemBase):
@@ -15,10 +13,10 @@ class ItemCreate(ItemBase):
 
 
 class ItemUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    category: Optional[str] = Field(None, max_length=100)
-    description: Optional[str] = None
-    location: Optional[str] = Field(None, max_length=255)
+    name: str | None = Field(None, min_length=1, max_length=255)
+    category: str | None = Field(None, max_length=100)
+    description: str | None = None
+    location: str | None = Field(None, max_length=255)
 
 
 class Item(ItemBase):
@@ -33,8 +31,8 @@ class Item(ItemBase):
 class ItemResponse(BaseModel):
     id: str  # ULID
     name: str
-    category: Optional[str]
-    description: Optional[str]
-    location: Optional[str]
+    category: str | None
+    description: str | None
+    location: str | None
     created_at: str
     updated_at: str

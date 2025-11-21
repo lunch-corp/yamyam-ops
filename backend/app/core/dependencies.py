@@ -2,8 +2,6 @@
 인증 의존성 (Firebase + JWT)
 """
 
-from typing import Optional
-
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -30,10 +28,10 @@ def get_firebase_uid(
 
 
 def get_optional_firebase_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
         HTTPBearer(auto_error=False)
     ),
-) -> Optional[dict]:
+) -> dict | None:
     """선택적 Firebase 인증 (토큰이 없어도 허용)"""
     if not credentials:
         return None
@@ -45,10 +43,10 @@ def get_optional_firebase_user(
 
 
 def get_optional_firebase_uid(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
         HTTPBearer(auto_error=False)
     ),
-) -> Optional[str]:
+) -> str | None:
     """선택적 Firebase UID (토큰이 없어도 허용)"""
     user = get_optional_firebase_user(credentials)
     return user.get("uid") if user else None
@@ -100,15 +98,15 @@ def get_firebase_uid_from_token(
 
 
 def get_optional_user_from_token(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
         HTTPBearer(auto_error=False)
     ),
-) -> Optional[TokenPayload]:
+) -> TokenPayload | None:
     """
     선택적 JWT 인증 (토큰이 없어도 허용)
 
     Returns:
-        Optional[TokenPayload]: 토큰 페이로드 또는 None
+        TokenPayload | None: 토큰 페이로드 또는 None
     """
     if not credentials:
         return None

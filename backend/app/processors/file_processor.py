@@ -5,7 +5,7 @@
 import json
 import logging
 from io import BytesIO, StringIO
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 import pandas as pd
 
@@ -18,7 +18,7 @@ class FileProcessor:
     @staticmethod
     def read_file(
         file_content: bytes, file_format: str = "csv", encoding: str = "utf-8"
-    ) -> Union[pd.DataFrame, Dict[str, Any], List[Dict[str, Any]]]:
+    ) -> pd.DataFrame | dict[str, Any] | list[dict[str, Any]]:
         """
         파일 내용을 적절한 포맷으로 읽기
 
@@ -74,7 +74,7 @@ class FileProcessor:
     @staticmethod
     def read_json(
         file_content: bytes, encoding: str = "utf-8"
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """
         JSON 파일 내용을 읽기
 
@@ -118,8 +118,8 @@ class FileProcessor:
 
     @staticmethod
     def validate_columns(
-        df: pd.DataFrame, required_columns: List[str]
-    ) -> Tuple[bool, str]:
+        df: pd.DataFrame, required_columns: list[str]
+    ) -> tuple[bool, str]:
         """
         DataFrame의 컬럼 유효성 검사
 
@@ -151,7 +151,7 @@ class FileProcessor:
         return df
 
     @staticmethod
-    def batch_data(df: pd.DataFrame, batch_size: int = 1000) -> List[pd.DataFrame]:
+    def batch_data(df: pd.DataFrame, batch_size: int = 1000) -> list[pd.DataFrame]:
         """
         DataFrame을 배치로 분할
 

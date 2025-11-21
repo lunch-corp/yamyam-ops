@@ -4,13 +4,13 @@
 
 import logging
 import traceback
-from typing import Dict, List, Tuple
+
+from fastapi import HTTPException, UploadFile, status
 
 from app.core.db import db
 from app.database import kakao_queries
 from app.processors.file_processor import FileProcessor
 from app.processors.kakao_data_processor import KakaoDataProcessor
-from fastapi import HTTPException, UploadFile, status
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class UploadService:
 
     async def _upload_csv_file(
         self, file: UploadFile, file_type: str, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """공통 CSV 파일 업로드 메서드"""
         try:
             # 파일 확장자 검증
@@ -213,44 +213,44 @@ class UploadService:
                 detail=f"파일 처리 중 오류가 발생했습니다: {str(e)}",
             )
 
-    async def upload_diner_basic(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_diner_basic(self, file: UploadFile, dry_run: bool = False) -> dict:
         """diner_basic.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_basic", dry_run)
 
     async def upload_diner_categories(
         self, file: UploadFile, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """diner_categories.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_categories", dry_run)
 
-    async def upload_diner_menus(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_diner_menus(self, file: UploadFile, dry_run: bool = False) -> dict:
         """diner_menus.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_menus", dry_run)
 
     async def upload_diner_reviews(
         self, file: UploadFile, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """diner_reviews.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_reviews", dry_run)
 
-    async def upload_diner_tags(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_diner_tags(self, file: UploadFile, dry_run: bool = False) -> dict:
         """diner_tags.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_tags", dry_run)
 
-    async def upload_reviewers(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_reviewers(self, file: UploadFile, dry_run: bool = False) -> dict:
         """reviewers.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviewers", dry_run)
 
-    async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> dict:
         """reviews.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviews", dry_run)
 
     def add_new_file_type(
         self,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
-        sql_fields: List[str],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
+        sql_fields: list[str],
         query: str,
     ) -> None:
         """
@@ -289,8 +289,8 @@ class UploadService:
     def add_new_file_type_simple(
         self,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
         query: str,
     ) -> None:
         """
@@ -311,7 +311,7 @@ class UploadService:
 
     async def upload_custom_file(
         self, file: UploadFile, file_type: str, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """
         커스텀 파일 타입 업로드
 
@@ -334,7 +334,7 @@ class UploadService:
         diner_reviews: UploadFile = None,
         diner_tags: UploadFile = None,
         dry_run: bool = False,
-    ) -> Dict:
+    ) -> dict:
         """모든 Kakao 데이터 파일 일괄 업로드"""
         results = {}
 

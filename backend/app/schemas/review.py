@@ -1,11 +1,9 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
 class ReviewBase(BaseModel):
     score: int = Field(..., ge=1, le=5)
-    review_text: Optional[str] = None
+    review_text: str | None = None
 
 
 class ReviewCreate(ReviewBase):
@@ -15,8 +13,8 @@ class ReviewCreate(ReviewBase):
 
 
 class ReviewUpdate(BaseModel):
-    score: Optional[int] = Field(None, ge=1, le=5)
-    review_text: Optional[str] = None
+    score: int | None = Field(None, ge=1, le=5)
+    review_text: str | None = None
 
 
 class Review(ReviewBase):
@@ -35,11 +33,11 @@ class ReviewResponse(BaseModel):
     firebase_uid: str
     item_id: str  # ULID
     score: int
-    review_text: Optional[str]
+    review_text: str | None
     created_at: str
     updated_at: str
 
 
 class ReviewWithItem(ReviewResponse):
     item_name: str
-    item_category: Optional[str]
+    item_category: str | None

@@ -3,10 +3,10 @@
 """
 
 import logging
-from typing import Dict
+
+from fastapi import APIRouter, File, Query, UploadFile
 
 from app.services.upload_service import UploadService
-from fastapi import APIRouter, File, Query, UploadFile
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ upload_service = UploadService()
 async def upload_restaurant_basic_data(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 음식점 기본 정보 업로드
 
@@ -56,7 +56,7 @@ async def upload_restaurant_basic_data(
 async def upload_restaurant_categories(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 음식점 카테고리 정보 업로드
 
@@ -78,7 +78,7 @@ async def upload_restaurant_categories(
 async def upload_restaurant_menus(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 음식점 메뉴 정보 업로드
 
@@ -100,7 +100,7 @@ async def upload_restaurant_menus(
 async def upload_restaurant_reviews(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 음식점 리뷰 통계 업로드
 
@@ -122,7 +122,7 @@ async def upload_restaurant_reviews(
 async def upload_restaurant_tags(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 음식점 태그 정보 업로드
 
@@ -148,7 +148,7 @@ async def bulk_upload_restaurant_data(
     diner_reviews: UploadFile = File(None),
     diner_tags: UploadFile = File(None),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 음식점 데이터 일괄 업로드
 
@@ -166,7 +166,7 @@ async def bulk_upload_restaurant_data(
 async def upload_reviewers(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 리뷰어 정보 업로드
 
@@ -192,7 +192,7 @@ async def upload_reviewers(
 async def upload_reviews(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
-) -> Dict:
+) -> dict:
     """
     카카오 리뷰 정보 업로드
 

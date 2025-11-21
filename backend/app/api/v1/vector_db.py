@@ -3,10 +3,10 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.vector_db import (
-    StoreVectorsRequest,
-    StoreVectorsResponse,
     SimilarRequest,
     SimilarResponse,
+    StoreVectorsRequest,
+    StoreVectorsResponse,
 )
 from app.services.vector_db_service import VectorDBService
 

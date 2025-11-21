@@ -1,7 +1,7 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional
 from pathlib import Path
+from typing import Any
 
 from app.core.config import settings
 from app.core.redis_db import redis_db
@@ -16,8 +16,8 @@ class RedisService:
         return await redis_db.get_client()
 
     async def create(
-        self, items: Dict[str, Any], expire: Optional[int] = None
-    ) -> Dict[str, bool]:
+        self, items: dict[str, Any], expire: int | None = None
+    ) -> dict[str, bool]:
         """
         Create key-value pairs in Redis. (Always uses pipeline)
 
@@ -66,7 +66,7 @@ class RedisService:
             logging.error(f"Redis create error: {e}")
             raise
 
-    async def read(self, keys: List[str]) -> Dict[str, Any]:
+    async def read(self, keys: list[str]) -> dict[str, Any]:
         """
         Read values from Redis by keys. (Always uses pipeline)
 
@@ -110,8 +110,8 @@ class RedisService:
             raise
 
     async def update(
-        self, items: Dict[str, Any], expire: Optional[int] = None
-    ) -> Dict[str, bool]:
+        self, items: dict[str, Any], expire: int | None = None
+    ) -> dict[str, bool]:
         """
         Update existing key values in Redis. (Always uses pipeline)
 
@@ -164,7 +164,7 @@ class RedisService:
             logging.error(f"Redis update error: {e}")
             raise
 
-    async def delete(self, keys: List[str]) -> Dict[str, bool]:
+    async def delete(self, keys: list[str]) -> dict[str, bool]:
         """
         Delete keys from Redis. (Always uses pipeline)
 
@@ -218,7 +218,7 @@ class RedisService:
             logging.error(f"Redis exists error: {e}")
             raise
 
-    async def get_ttl(self, key: str) -> Optional[int]:
+    async def get_ttl(self, key: str) -> int | None:
         """Get TTL of key (-1: no expiration, -2: key not found)"""
         try:
             client = await self._get_client()
@@ -227,7 +227,7 @@ class RedisService:
             logging.error(f"Redis ttl error: {e}")
             raise
 
-    async def list_keys(self, pattern: str = "*") -> List[str]:
+    async def list_keys(self, pattern: str = "*") -> list[str]:
         """List keys matching pattern"""
         try:
             client = await self._get_client()
@@ -237,8 +237,8 @@ class RedisService:
             raise
 
     async def bulk_create(
-        self, items: Dict[str, Any], expire: Optional[int] = None
-    ) -> Dict[str, bool]:
+        self, items: dict[str, Any], expire: int | None = None
+    ) -> dict[str, bool]:
         """
         Create multiple key-value pairs at once.
         Large batches are automatically split into chunks.
@@ -291,7 +291,7 @@ class RedisService:
             logging.error(f"Redis bulk create error: {e}")
             raise
 
-    async def bulk_read(self, keys: List[str]) -> Dict[str, Any]:
+    async def bulk_read(self, keys: list[str]) -> dict[str, Any]:
         """
         Read multiple key values at once.
         Large batches are automatically split into chunks.
@@ -337,8 +337,8 @@ class RedisService:
             raise
 
     async def bulk_update(
-        self, items: Dict[str, Any], expire: Optional[int] = None
-    ) -> Dict[str, bool]:
+        self, items: dict[str, Any], expire: int | None = None
+    ) -> dict[str, bool]:
         """
         Update multiple key values at once.
         Large batches are automatically split into chunks.
@@ -395,7 +395,7 @@ class RedisService:
             logging.error(f"Redis bulk update error: {e}")
             raise
 
-    async def bulk_delete(self, keys: List[str]) -> Dict[str, bool]:
+    async def bulk_delete(self, keys: list[str]) -> dict[str, bool]:
         """
         Delete multiple keys at once.
         Large batches are automatically split into chunks.
@@ -442,7 +442,7 @@ class RedisService:
             logging.error(f"Redis bulk delete error: {e}")
             raise
 
-    async def load_similar_restaurants_data(self, json_path: str) -> Dict[str, int]:
+    async def load_similar_restaurants_data(self, json_path: str) -> dict[str, int]:
         """
         Load similar restaurants data from JSON file into Redis.
 
@@ -469,7 +469,7 @@ class RedisService:
             logging.info(f"Loading similar restaurants data from {json_path}...")
 
             # Load JSON file
-            with open(json_file, "r", encoding="utf-8") as f:
+            with open(json_file, encoding="utf-8") as f:
                 similar_data = json.load(f)
 
             # Prepare data for Redis

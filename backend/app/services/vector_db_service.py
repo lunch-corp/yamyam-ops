@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List
 
 import faiss
 import numpy as np
 
 from app.schemas.vector_db import (
+    SimilarResponse,
+    StoreVectorsResponse,
     Vector,
     VectorType,
-    StoreVectorsResponse,
-    SimilarResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _IndexArtifacts:
     index: faiss.IndexFlatIP
-    ids: List[str]
+    ids: list[str]
     embeddings: np.ndarray
 
 
@@ -28,15 +27,15 @@ class VectorDBService:
     """FAISS 벡터 데이터베이스 서비스"""
 
     def __init__(self) -> None:
-        self._artifacts: Dict[VectorType, _IndexArtifacts] = {}
+        self._artifacts: dict[VectorType, _IndexArtifacts] = {}
 
     def get_similar(
         self,
         vector_type: VectorType,
         query_id: str,
-        diner_scores: List[float],
+        diner_scores: list[float],
         top_k: int,
-        filtering_ids: List[str] = None,
+        filtering_ids: list[str] = None,
     ) -> SimilarResponse:
         """입력받은 ID와 점수 벡터를 기반으로 FAISS 인덱스에서 내적 기반 유사 벡터 검색"""
         artifacts = self._ensure_index(vector_type)
@@ -74,7 +73,7 @@ class VectorDBService:
         return SimilarResponse(query_id=query_id, neighbors=neighbors)
 
     def store_vectors(
-        self, vector_type: VectorType, vectors: List[Vector], normalize: bool
+        self, vector_type: VectorType, vectors: list[Vector], normalize: bool
     ) -> StoreVectorsResponse:
         """
         Add new vectors to existing FAISS index or create if not exists.
@@ -128,7 +127,7 @@ class VectorDBService:
         )
 
     def _normalize_embeddings(
-        self, embeddings: np.ndarray, ids: List[str]
+        self, embeddings: np.ndarray, ids: list[str]
     ) -> np.ndarray:
         """벡터 정규화 (L2 norm)"""
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)

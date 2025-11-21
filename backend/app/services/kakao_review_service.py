@@ -2,7 +2,7 @@
 카카오 리뷰 서비스
 """
 
-from typing import List, Optional
+from fastapi import HTTPException, status
 
 from app.core.db import db
 from app.database.kakao_queries import (
@@ -23,7 +23,6 @@ from app.schemas.kakao_review import (
     KakaoReviewWithDetails,
 )
 from app.services.base_service import BaseService
-from fastapi import HTTPException, status
 
 
 class KakaoReviewService(
@@ -91,12 +90,12 @@ class KakaoReviewService(
 
     def get_list(
         self,
-        skip: Optional[int] = 0,
-        limit: Optional[int] = 100,
-        diner_idx: Optional[int] = None,
-        reviewer_id: Optional[int] = None,
-        min_rating: Optional[float] = None,
-    ) -> List[KakaoReviewWithDetails]:
+        skip: int | None = 0,
+        limit: int | None = 100,
+        diner_idx: int | None = None,
+        reviewer_id: int | None = None,
+        min_rating: float | None = None,
+    ) -> list[KakaoReviewWithDetails]:
         """카카오 리뷰 목록 조회 (상세 정보 포함)"""
         # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
         if diner_idx or reviewer_id or min_rating is not None:

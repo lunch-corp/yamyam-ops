@@ -2,8 +2,6 @@
 사용자 서비스
 """
 
-from typing import List
-
 from fastapi import HTTPException, status
 
 from app.core.db import db
@@ -91,7 +89,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
 
     def get_list(
         self, skip: int = 0, limit: int = 100, **filters
-    ) -> List[UserResponse]:
+    ) -> list[UserResponse]:
         """사용자 목록 조회"""
         results = self._execute_query_all(GET_ALL_USERS, (limit, skip))
         return [self._convert_to_response(row) for row in results]

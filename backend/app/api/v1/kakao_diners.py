@@ -1,5 +1,6 @@
 import logging
-from typing import List, Optional
+
+from fastapi import APIRouter, Query
 
 from app.schemas.kakao_diner import (
     KakaoDinerCreate,
@@ -7,7 +8,6 @@ from app.schemas.kakao_diner import (
     KakaoDinerUpdate,
 )
 from app.services.kakao_diner_service import KakaoDinerService
-from fastapi import APIRouter, Query
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,27 +32,27 @@ def create_restaurant(
 
 @router.get(
     "/",
-    response_model=List[KakaoDinerResponse],
+    response_model=list[KakaoDinerResponse],
     tags=["kakao-restaurants"],
     summary="카카오 음식점 목록 조회",
 )
 def list_restaurants(
     limit: int = Query(100, ge=1, le=1000, description="반환할 최대 레코드 수 (top-k)"),
-    diner_category_large: Optional[str] = Query(None, description="대분류 카테고리"),
-    diner_category_middle: Optional[str] = Query(None, description="중분류 카테고리"),
-    diner_category_small: Optional[str] = Query(None, description="소분류 카테고리"),
-    diner_category_detail: Optional[str] = Query(None, description="세부 카테고리"),
-    min_rating: Optional[float] = Query(None, ge=0, le=5, description="최소 평점"),
-    user_lat: Optional[float] = Query(
+    diner_category_large: str | None = Query(None, description="대분류 카테고리"),
+    diner_category_middle: str | None = Query(None, description="중분류 카테고리"),
+    diner_category_small: str | None = Query(None, description="소분류 카테고리"),
+    diner_category_detail: str | None = Query(None, description="세부 카테고리"),
+    min_rating: float | None = Query(None, ge=0, le=5, description="최소 평점"),
+    user_lat: float | None = Query(
         None, ge=-90, le=90, description="사용자 위도 (거리 필터 및 정렬용)"
     ),
-    user_lon: Optional[float] = Query(
+    user_lon: float | None = Query(
         None, ge=-180, le=180, description="사용자 경도 (거리 필터 및 정렬용)"
     ),
-    radius_km: Optional[float] = Query(
+    radius_km: float | None = Query(
         None, gt=0, description="검색 반경 (km, 기본 필터)"
     ),
-    user_id: Optional[str] = Query(None, description="사용자 ID (개인화 정렬용)"),
+    user_id: str | None = Query(None, description="사용자 ID (개인화 정렬용)"),
     sort_by: str = Query(
         "rating",
         description="정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count)",

@@ -2,9 +2,9 @@
 카카오 음식점 서비스
 """
 
-from typing import List, Optional
-
 import pandas as pd
+from fastapi import HTTPException, status
+
 from app.core.db import db
 from app.database.kakao_queries import (
     CHECK_KAKAO_DINER_EXISTS_BY_IDX,
@@ -19,7 +19,6 @@ from app.schemas.kakao_diner import (
     KakaoDinerUpdate,
 )
 from app.services.base_service import BaseService
-from fastapi import HTTPException, status
 
 
 class KakaoDinerService(
@@ -31,7 +30,7 @@ class KakaoDinerService(
         super().__init__("kakao_diner", "diner_idx")
 
     def _calculate_personalization_score(
-        self, diner_idx_list: List[int], user_id: Optional[str] = None
+        self, diner_idx_list: list[int], user_id: str | None = None
     ) -> pd.DataFrame:
         """
         개인화 점수 계산 (미구현)
@@ -61,7 +60,7 @@ class KakaoDinerService(
         pass
         return pd.DataFrame(columns=["diner_idx", "score"])
 
-    def _calculate_hidden_gem_score(self, diner_idx_list: List[int]) -> pd.DataFrame:
+    def _calculate_hidden_gem_score(self, diner_idx_list: list[int]) -> pd.DataFrame:
         """
         숨찐맛 점수 계산 (미구현)
 
@@ -176,17 +175,17 @@ class KakaoDinerService(
     def get_list(
         self,
         limit: int = 100,
-        diner_category_large: Optional[str] = None,
-        diner_category_middle: Optional[str] = None,
-        diner_category_small: Optional[str] = None,
-        diner_category_detail: Optional[str] = None,
-        min_rating: Optional[float] = None,
-        user_lat: Optional[float] = None,
-        user_lon: Optional[float] = None,
-        radius_km: Optional[float] = None,
-        user_id: Optional[str] = None,
+        diner_category_large: str | None = None,
+        diner_category_middle: str | None = None,
+        diner_category_small: str | None = None,
+        diner_category_detail: str | None = None,
+        min_rating: float | None = None,
+        user_lat: float | None = None,
+        user_lon: float | None = None,
+        radius_km: float | None = None,
+        user_id: str | None = None,
         sort_by: str = "rating",  # personalization, popularity, hidden_gem, rating, distance, review_count
-    ) -> List[KakaoDinerResponse]:
+    ) -> list[KakaoDinerResponse]:
         """
         카카오 음식점 목록 조회 (필터링 및 정렬)
 

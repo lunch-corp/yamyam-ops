@@ -1,5 +1,4 @@
 import json
-from typing import List, Optional, Union
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,7 +13,7 @@ class Settings(BaseSettings):
     redis_max_batch_size: int = 1000  # 기본 배치 크기
 
     # FAISS 서버 설정
-    faiss_server_url: Optional[str] = "http://faiss:7000"
+    faiss_server_url: str | None = "http://faiss:7000"
 
     # JWT 설정
     jwt_secret_key: str = "your-secret-key-here-change-in-production"
@@ -25,10 +24,10 @@ class Settings(BaseSettings):
     # Firebase 설정 (파일 경로 또는 JSON 문자열)
     # GOOGLE_APPLICATION_CREDENTIALS 환경 변수로 파일 경로 지정 (권장)
     # 또는 FIREBASE_KEY 환경 변수로 JSON 문자열 전달
-    firebase_key: Optional[str] = None
+    firebase_key: str | None = None
 
     # CORS 설정
-    allowed_origins: Union[List[str], str] = [
+    allowed_origins: list[str] | str = [
         "http://localhost:8501",
         "http://localhost:3000",
         "http://localhost",
