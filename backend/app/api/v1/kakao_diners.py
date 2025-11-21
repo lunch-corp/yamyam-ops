@@ -37,7 +37,12 @@ def create_restaurant(
     summary="카카오 음식점 목록 조회",
 )
 def list_restaurants(
-    limit: int = Query(100, ge=1, le=1000, description="반환할 최대 레코드 수 (top-k)"),
+    limit: int | None = Query(
+        None,
+        ge=1,
+        le=1000,
+        description="반환할 최대 레코드 수 (top-k), None이면 전체 반환",
+    ),
     diner_category_large: str | None = Query(None, description="대분류 카테고리"),
     diner_category_middle: str | None = Query(None, description="중분류 카테고리"),
     diner_category_small: str | None = Query(None, description="소분류 카테고리"),

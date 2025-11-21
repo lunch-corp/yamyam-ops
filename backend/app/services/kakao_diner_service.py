@@ -174,7 +174,7 @@ class KakaoDinerService(
 
     def get_list(
         self,
-        limit: int = 100,
+        limit: int | None = None,
         diner_category_large: str | None = None,
         diner_category_middle: str | None = None,
         diner_category_small: str | None = None,
@@ -326,8 +326,9 @@ class KakaoDinerService(
             # 기본값: 평점순
             df = df.sort_values(by=["diner_review_avg"], ascending=False)
 
-        # 4. top-k 적용
-        df = df.head(limit)
+        # 4. top-k 적용 (limit이 None이면 전체 반환)
+        if limit is not None:
+            df = df.head(limit)
 
         # 5. Response 모델로 변환
         return [self._convert_to_response(row.to_dict()) for _, row in df.iterrows()]
