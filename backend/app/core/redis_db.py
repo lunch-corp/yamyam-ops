@@ -65,5 +65,5 @@ class RedisDatabase:
             logging.error(f"Redis data initialization error: {e}")
 
 
-# Global Redis instance.
+# Global Redis instance
 redis_db = RedisDatabase()
