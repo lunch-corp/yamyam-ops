@@ -2,7 +2,7 @@
 카카오 리뷰어 서비스
 """
 
-from typing import List, Optional
+from fastapi import HTTPException, status
 
 from app.core.db import db
 from app.database.kakao_queries import (
@@ -19,7 +19,6 @@ from app.schemas.kakao_reviewer import (
     KakaoReviewerUpdate,
 )
 from app.services.base_service import BaseService
-from fastapi import HTTPException, status
 
 
 class KakaoReviewerService(
@@ -34,13 +33,9 @@ class KakaoReviewerService(
         """카카오 리뷰어 생성"""
         try:
             with db.get_cursor() as (cursor, conn):
-                # ULID 생성 (Python ulid_utils.py 사용)
-                ulid = self._generate_ulid()
-
                 cursor.execute(
                     INSERT_KAKAO_REVIEWER,
                     (
-                        ulid,
                         data.reviewer_id,
                         data.reviewer_user_name,
                         data.reviewer_review_cnt,
@@ -71,11 +66,11 @@ class KakaoReviewerService(
 
     def get_list(
         self,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
-        min_review_count: Optional[int] = None,
-        is_verified: Optional[bool] = None,
-    ) -> List[KakaoReviewerResponse]:
+        skip: int | None = None,
+        limit: int | None = None,
+        min_review_count: int | None = None,
+        is_verified: bool | None = None,
+    ) -> list[KakaoReviewerResponse]:
         """카카오 리뷰어 목록 조회"""
         # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
         if min_review_count is not None or is_verified is not None:

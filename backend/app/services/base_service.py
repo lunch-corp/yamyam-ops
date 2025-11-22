@@ -4,7 +4,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, TypeVar
+from typing import Any, Generic, TypeVar
 
 from fastapi import HTTPException, status
 
@@ -65,7 +65,7 @@ class BaseService(ABC, Generic[CreateSchema, UpdateSchema, ResponseSchema]):
 
     def _execute_query_all(
         self, query: str, params: tuple = None, dry_run: bool = False
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """쿼리 실행 및 모든 결과 반환"""
         try:
             if dry_run:
@@ -99,8 +99,8 @@ class BaseService(ABC, Generic[CreateSchema, UpdateSchema, ResponseSchema]):
 
     def _build_update_query(
         self,
-        update_fields: List[str],
-        update_values: List[Any],
+        update_fields: list[str],
+        update_values: list[Any],
         where_field: str,
         where_value: Any,
     ) -> tuple:
@@ -123,8 +123,8 @@ class BaseService(ABC, Generic[CreateSchema, UpdateSchema, ResponseSchema]):
 
     def _build_select_query(
         self,
-        fields: List[str],
-        conditions: List[str] = None,
+        fields: list[str],
+        conditions: list[str] = None,
         order_by: str = None,
         limit: int = None,
         offset: int = None,
@@ -162,7 +162,7 @@ class BaseService(ABC, Generic[CreateSchema, UpdateSchema, ResponseSchema]):
     @abstractmethod
     def get_list(
         self, skip: int = 0, limit: int = 100, dry_run: bool = False, **filters
-    ) -> List[ResponseSchema]:
+    ) -> list[ResponseSchema]:
         """레코드 목록 조회"""
         pass
 
@@ -174,11 +174,11 @@ class BaseService(ABC, Generic[CreateSchema, UpdateSchema, ResponseSchema]):
         pass
 
     @abstractmethod
-    def delete(self, id_value: Any, dry_run: bool = False) -> Dict[str, str]:
+    def delete(self, id_value: Any, dry_run: bool = False) -> dict[str, str]:
         """레코드 삭제"""
         pass
 
     @abstractmethod
-    def _convert_to_response(self, row: Dict) -> ResponseSchema:
+    def _convert_to_response(self, row: dict) -> ResponseSchema:
         """데이터베이스 행을 응답 모델로 변환"""
         pass

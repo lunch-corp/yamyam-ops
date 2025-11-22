@@ -3,14 +3,14 @@ Token 관리 서비스
 """
 
 import logging
-from typing import Optional
+
+from fastapi import HTTPException, status
 
 from app.core.config import settings
 from app.core.firebase_auth import firebase_auth
 from app.schemas.token import TokenPayload, TokenResponse
 from app.services.user_service import UserService
 from app.utils.jwt_utils import create_access_token, create_refresh_token, verify_token
-from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class TokenService:
         self.user_service = UserService()
 
     def create_tokens(
-        self, user_id: str, firebase_uid: str, email: Optional[str] = None
+        self, user_id: str, firebase_uid: str, email: str | None = None
     ) -> TokenResponse:
         """
         Access Token과 Refresh Token 생성

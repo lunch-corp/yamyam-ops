@@ -1,11 +1,9 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
 class KakaoReviewerBase(BaseModel):
     reviewer_id: int = Field(..., description="카카오 리뷰어 고유 ID")
-    reviewer_user_name: Optional[str] = Field(
+    reviewer_user_name: str | None = Field(
         None, max_length=100, description="리뷰어 사용자명"
     )
     reviewer_review_cnt: int = Field(..., ge=0, description="리뷰 개수")
@@ -19,11 +17,11 @@ class KakaoReviewerCreate(KakaoReviewerBase):
 
 
 class KakaoReviewerUpdate(BaseModel):
-    reviewer_user_name: Optional[str] = Field(None, max_length=100)
-    reviewer_review_cnt: Optional[int] = Field(None, ge=0)
-    reviewer_avg: Optional[float] = Field(None, ge=0, le=5)
-    badge_grade: Optional[str] = None
-    badge_level: Optional[int] = Field(None, ge=0)
+    reviewer_user_name: str | None = Field(None, max_length=100)
+    reviewer_review_cnt: int | None = Field(None, ge=0)
+    reviewer_avg: float | None = Field(None, ge=0, le=5)
+    badge_grade: str | None = None
+    badge_level: int | None = Field(None, ge=0)
 
 
 class KakaoReviewer(KakaoReviewerBase):
@@ -38,7 +36,7 @@ class KakaoReviewer(KakaoReviewerBase):
 class KakaoReviewerResponse(BaseModel):
     id: str  # ULID
     reviewer_id: int
-    reviewer_user_name: Optional[str]
+    reviewer_user_name: str | None
     reviewer_review_cnt: int
     reviewer_avg: float
     badge_grade: str

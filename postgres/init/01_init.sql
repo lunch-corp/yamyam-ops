@@ -4,6 +4,9 @@
 -- 주의: 테이블 스키마는 SQLAlchemy 모델(app/models/)에서 자동 생성됩니다.
 -- 이 파일은 데이터베이스 함수와 트리거만 정의합니다.
 
+-- PostGIS 확장 활성화 (지리 공간 데이터 처리)
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 -- ULID 생성 함수 (PostgreSQL용)
 CREATE OR REPLACE FUNCTION generate_ulid() RETURNS VARCHAR(26) AS $$
 DECLARE

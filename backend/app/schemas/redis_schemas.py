@@ -1,13 +1,13 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 
 class RedisCreateRequest(BaseModel):
-    items: Dict[str, Any] = Field(
+    items: dict[str, Any] = Field(
         ..., description="Key-value dictionary to create", min_length=1
     )
-    expire: Optional[int] = Field(
+    expire: int | None = Field(
         None, description="Expiration time in seconds for all keys", ge=1
     )
 
@@ -76,7 +76,7 @@ class RedisCreateRequest(BaseModel):
 
 
 class RedisReadRequest(BaseModel):
-    keys: List[str] = Field(..., description="List of keys to read", min_length=1)
+    keys: list[str] = Field(..., description="List of keys to read", min_length=1)
 
     model_config = {
         "json_schema_extra": {
@@ -107,10 +107,10 @@ class RedisReadRequest(BaseModel):
 
 
 class RedisUpdateRequest(BaseModel):
-    items: Dict[str, Any] = Field(
+    items: dict[str, Any] = Field(
         ..., description="Key-value dictionary to update", min_length=1
     )
-    expire: Optional[int] = Field(
+    expire: int | None = Field(
         None, description="Expiration time in seconds for all keys", ge=1
     )
 
@@ -166,7 +166,7 @@ class RedisUpdateRequest(BaseModel):
 
 
 class RedisDeleteRequest(BaseModel):
-    keys: List[str] = Field(..., description="List of keys to delete", min_length=1)
+    keys: list[str] = Field(..., description="List of keys to delete", min_length=1)
 
     model_config = {
         "json_schema_extra": {
@@ -199,8 +199,8 @@ class RedisDeleteRequest(BaseModel):
 class RedisResponse(BaseModel):
     success: bool = Field(..., description="Operation success status")
     message: str = Field(..., description="Response message")
-    data: Dict[str, Any] = Field(..., description="Result for each key")
-    stats: Dict[str, int] = Field(..., description="Operation statistics")
+    data: dict[str, Any] = Field(..., description="Result for each key")
+    stats: dict[str, int] = Field(..., description="Operation statistics")
 
     model_config = {
         "json_schema_extra": {
@@ -229,10 +229,10 @@ class RedisResponse(BaseModel):
 class RedisReadResponse(BaseModel):
     success: bool = Field(..., description="Operation success status")
     message: str = Field(..., description="Response message")
-    data: Dict[str, Any] = Field(
+    data: dict[str, Any] = Field(
         ..., description="Value for each key (null if not found)"
     )
-    stats: Dict[str, int] = Field(..., description="Read statistics")
+    stats: dict[str, int] = Field(..., description="Read statistics")
 
     model_config = {
         "json_schema_extra": {

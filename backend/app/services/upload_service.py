@@ -3,13 +3,14 @@
 """
 
 import logging
-from typing import Dict, List, Tuple
+import traceback
+
+from fastapi import HTTPException, UploadFile, status
 
 from app.core.db import db
 from app.database import kakao_queries
 from app.processors.file_processor import FileProcessor
 from app.processors.kakao_data_processor import KakaoDataProcessor
-from fastapi import HTTPException, UploadFile, status
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ class UploadService:
             "diner_menus": kakao_queries.UPDATE_KAKAO_DINER_MENU,
             "diner_reviews": kakao_queries.UPDATE_KAKAO_DINER_REVIEW,
             "diner_tags": kakao_queries.UPDATE_KAKAO_DINER_TAGS,
+            "reviewers": kakao_queries.INSERT_KAKAO_REVIEWER,
+            "reviews": kakao_queries.INSERT_KAKAO_REVIEW,
         }
 
         # 설정 일관성 검증
@@ -53,7 +56,7 @@ class UploadService:
 
     async def _upload_csv_file(
         self, file: UploadFile, file_type: str, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """공통 CSV 파일 업로드 메서드"""
         try:
             # 파일 확장자 검증
@@ -105,27 +108,101 @@ class UploadService:
             # 실제 DB 저장
             success_count = 0
             error_count = 0
+            error_details = []
 
             with db.get_cursor() as (cursor, conn):
+                batch_num = 0
                 for batch in FileProcessor.batch_data(df, batch_size=1000):
+                    batch_num += 1
                     batch_data = KakaoDataProcessor.process_file(file_type, batch)
+
+                    # 배치 전체 저장 시도
                     try:
                         cursor.executemany(self.query_mapping[file_type], batch_data)
                         conn.commit()
                         success_count += len(batch_data)
-                        logger.info(f"배치 저장 성공: {len(batch_data)}개")
+                        logger.info(f"배치 {batch_num} 저장 성공: {len(batch_data)}개")
                     except Exception as e:
+                        # 배치 전체 실패 시 개별 행 처리
                         conn.rollback()
-                        error_count += len(batch_data)
-                        logger.error(f"배치 저장 실패: {str(e)}")
+                        error_msg = str(e)
+                        error_traceback = traceback.format_exc()
+                        logger.warning(
+                            f"배치 {batch_num} 전체 저장 실패, 개별 행 처리 시작: {error_msg}"
+                        )
+                        logger.debug(f"배치 {batch_num} 오류 상세:\n{error_traceback}")
 
-            return {
+                        # 각 행을 개별적으로 처리 (오류가 발생한 행은 건너뛰고 계속 진행)
+                        batch_success = 0
+                        batch_errors = 0
+
+                        for idx, row_data in enumerate(batch_data):
+                            try:
+                                # 각 행을 개별 트랜잭션으로 처리
+                                cursor.execute(self.query_mapping[file_type], row_data)
+                                conn.commit()
+                                batch_success += 1
+                                success_count += 1
+                            except Exception as row_error:
+                                conn.rollback()
+                                batch_errors += 1
+                                error_count += 1
+
+                                # 원본 DataFrame에서 해당 행 찾기
+                                original_idx = (batch_num - 1) * 1000 + idx
+                                row_error_msg = str(row_error)
+
+                                # 오류 상세 정보 저장 (최대 10개만)
+                                if len(error_details) < 10:
+                                    error_details.append(
+                                        {
+                                            "row_index": original_idx,
+                                            "data": row_data,
+                                            "error": row_error_msg,
+                                        }
+                                    )
+
+                                # 처음 5개만 상세 로깅
+                                if batch_errors <= 5:
+                                    logger.error(
+                                        f"  행 {original_idx}: {row_error_msg}"
+                                    )
+                                    logger.error(f"    데이터: {row_data}")
+
+                                    # INTEGER 범위 오류인 경우 특별히 강조
+                                    if "integer out of range" in row_error_msg.lower():
+                                        logger.error(
+                                            "    ⚠️ INTEGER 범위 초과 오류 감지!"
+                                        )
+                                        # 데이터에서 큰 정수 값 찾기
+                                        for i, val in enumerate(row_data):
+                                            if (
+                                                isinstance(val, (int, float))
+                                                and abs(val) > 2147483647
+                                            ):
+                                                logger.error(
+                                                    f"      값[{i}] = {val} (INTEGER 최대값: 2147483647 초과)"
+                                                )
+
+                        logger.info(
+                            f"배치 {batch_num} 개별 처리 완료: 성공 {batch_success}개, 실패 {batch_errors}개"
+                        )
+
+            result = {
                 "message": f"{file_type} 파일 업로드 완료",
                 "total_rows": len(df),
                 "success_count": success_count,
                 "error_count": error_count,
                 "dry_run": False,
             }
+
+            if error_details:
+                result["error_details"] = error_details[:10]  # 최대 10개만 반환
+                result["error_summary"] = (
+                    f"{len(error_details)}개 행에서 오류 발생 (상세 정보는 error_details 참조)"
+                )
+
+            return result
 
         except HTTPException:
             raise
@@ -136,44 +213,44 @@ class UploadService:
                 detail=f"파일 처리 중 오류가 발생했습니다: {str(e)}",
             )
 
-    async def upload_diner_basic(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_diner_basic(self, file: UploadFile, dry_run: bool = False) -> dict:
         """diner_basic.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_basic", dry_run)
 
     async def upload_diner_categories(
         self, file: UploadFile, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """diner_categories.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_categories", dry_run)
 
-    async def upload_diner_menus(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_diner_menus(self, file: UploadFile, dry_run: bool = False) -> dict:
         """diner_menus.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_menus", dry_run)
 
     async def upload_diner_reviews(
         self, file: UploadFile, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """diner_reviews.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_reviews", dry_run)
 
-    async def upload_diner_tags(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_diner_tags(self, file: UploadFile, dry_run: bool = False) -> dict:
         """diner_tags.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_tags", dry_run)
 
-    async def upload_reviewers(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_reviewers(self, file: UploadFile, dry_run: bool = False) -> dict:
         """reviewers.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviewers", dry_run)
 
-    async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> Dict:
+    async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> dict:
         """reviews.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviews", dry_run)
 
     def add_new_file_type(
         self,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
-        sql_fields: List[str],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
+        sql_fields: list[str],
         query: str,
     ) -> None:
         """
@@ -212,8 +289,8 @@ class UploadService:
     def add_new_file_type_simple(
         self,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
         query: str,
     ) -> None:
         """
@@ -234,7 +311,7 @@ class UploadService:
 
     async def upload_custom_file(
         self, file: UploadFile, file_type: str, dry_run: bool = False
-    ) -> Dict:
+    ) -> dict:
         """
         커스텀 파일 타입 업로드
 
@@ -257,7 +334,7 @@ class UploadService:
         diner_reviews: UploadFile = None,
         diner_tags: UploadFile = None,
         dry_run: bool = False,
-    ) -> Dict:
+    ) -> dict:
         """모든 Kakao 데이터 파일 일괄 업로드"""
         results = {}
 

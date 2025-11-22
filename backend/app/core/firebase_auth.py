@@ -4,7 +4,6 @@ Firebase 설정 및 인증 관리
 
 import json
 import logging
-from typing import Optional
 
 import firebase_admin
 from fastapi import HTTPException, status
@@ -64,7 +63,7 @@ class FirebaseAuth:
             logger.error(f"상세 오류: {traceback.format_exc()}")
             self._app = None
 
-    def _get_firebase_key(self) -> Optional[str]:
+    def _get_firebase_key(self) -> str | None:
         """환경변수에서 Firebase 키 가져오기"""
         import os
 
@@ -72,7 +71,7 @@ class FirebaseAuth:
         credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if credentials_path and os.path.exists(credentials_path):
             try:
-                with open(credentials_path, "r") as f:
+                with open(credentials_path) as f:
                     return f.read()
             except Exception as e:
                 logger.error(f"Firebase 키 파일 읽기 실패: {e}")
@@ -81,7 +80,7 @@ class FirebaseAuth:
         # 기존 FIREBASE_KEY 환경변수 확인
         return os.getenv("FIREBASE_KEY")
 
-    def verify_token(self, token: str) -> Optional[dict]:
+    def verify_token(self, token: str) -> dict | None:
         """Firebase ID 토큰 검증"""
         if not self._app:
             logger.warning("Firebase가 초기화되지 않았습니다.")
@@ -98,7 +97,7 @@ class FirebaseAuth:
             logger.error(f"토큰 검증 중 오류: {e}")
             return None
 
-    def get_user_by_uid(self, uid: str) -> Optional[dict]:
+    def get_user_by_uid(self, uid: str) -> dict | None:
         """UID로 사용자 정보 조회"""
         if not self._app:
             return None
@@ -121,8 +120,8 @@ class FirebaseAuth:
             return None
 
     def create_custom_token(
-        self, uid: str, additional_claims: Optional[dict] = None
-    ) -> Optional[str]:
+        self, uid: str, additional_claims: dict | None = None
+    ) -> str | None:
         """커스텀 토큰 생성"""
         if not self._app:
             return None

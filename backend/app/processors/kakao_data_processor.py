@@ -3,7 +3,7 @@ Kakao 데이터 처리 전용 클래스 - 설정 기반 처리
 """
 
 import ast
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
 
 import pandas as pd
 
@@ -216,6 +216,27 @@ class KakaoDataProcessor:
             # 파싱 실패 시 원본 반환
             return x_str
 
+    # PostgreSQL INTEGER 범위: -2,147,483,648 ~ 2,147,483,647
+    INTEGER_MIN = -2147483648
+    INTEGER_MAX = 2147483647
+
+    @staticmethod
+    def _validate_integer_range(value, field_name: str = None):
+        """정수 값이 PostgreSQL INTEGER 범위 내인지 검증"""
+        if value is None:
+            return value
+
+        if (
+            value < KakaoDataProcessor.INTEGER_MIN
+            or value > KakaoDataProcessor.INTEGER_MAX
+        ):
+            field_info = f" ({field_name})" if field_name else ""
+            raise ValueError(
+                f"정수 값이 INTEGER 범위를 초과합니다{field_info}: "
+                f"{value} (범위: {KakaoDataProcessor.INTEGER_MIN} ~ {KakaoDataProcessor.INTEGER_MAX})"
+            )
+        return value
+
     TYPE_CONVERTERS = {
         "str": lambda x: str(x) if pd.notnull(x) else None,
         "str_optional": lambda x: str(x) if pd.notnull(x) and str(x).strip() else None,
@@ -233,14 +254,14 @@ class KakaoDataProcessor:
     }
 
     @classmethod
-    def get_required_columns(cls, file_type: str) -> List[str]:
+    def get_required_columns(cls, file_type: str) -> list[str]:
         """파일 타입별 필수 컬럼 반환"""
         if file_type not in cls.PROCESSING_CONFIG:
             raise ValueError(f"지원하지 않는 파일 타입: {file_type}")
         return cls.PROCESSING_CONFIG[file_type]["required_columns"]
 
     @classmethod
-    def get_sql_fields(cls, file_type: str) -> List[str]:
+    def get_sql_fields(cls, file_type: str) -> list[str]:
         """파일 타입별 SQL 필드 반환"""
         if file_type not in cls.PROCESSING_CONFIG:
             raise ValueError(f"지원하지 않는 파일 타입: {file_type}")
@@ -331,7 +352,7 @@ class KakaoDataProcessor:
             raise ValueError(f"지원하지 않는 작업 타입: {operation}")
 
     @classmethod
-    def validate_config_consistency(cls, file_type: str) -> Dict[str, bool]:
+    def validate_config_consistency(cls, file_type: str) -> dict[str, bool]:
         """
         설정의 일관성 검증
 
@@ -370,7 +391,7 @@ class KakaoDataProcessor:
         return {"valid": True, "message": "설정이 일관성 있게 구성됨"}
 
     @classmethod
-    def process_file(cls, file_type: str, df: pd.DataFrame) -> List[Tuple]:
+    def process_file(cls, file_type: str, df: pd.DataFrame) -> list[tuple]:
         """
         설정 기반 파일 처리
 
@@ -388,7 +409,7 @@ class KakaoDataProcessor:
         field_mappings = config["field_mappings"]
 
         data = []
-        for _, row in df.iterrows():
+        for row_idx, (_, row) in enumerate(df.iterrows()):
             processed_row = []
 
             for field_name, data_type in field_mappings:
@@ -399,8 +420,22 @@ class KakaoDataProcessor:
                 if not converter:
                     raise ValueError(f"지원하지 않는 데이터 타입: {data_type}")
 
-                processed_value = converter(row[field_name])
-                processed_row.append(processed_value)
+                try:
+                    processed_value = converter(row[field_name])
+                    # INTEGER 타입인 경우 범위 검증 (BigInteger로 변경했지만 혹시 모를 경우 대비)
+                    # 실제로는 모델이 BigInteger이므로 검증은 선택사항
+                    processed_row.append(processed_value)
+                except (ValueError, OverflowError) as e:
+                    # 원본 행 인덱스 포함하여 오류 메시지 개선
+                    original_row_idx = (
+                        df.index[row_idx]
+                        if hasattr(df.index, "__getitem__")
+                        else row_idx
+                    )
+                    raise ValueError(
+                        f"행 {original_row_idx}, 필드 '{field_name}' 처리 실패: {str(e)}\n"
+                        f"원본 값: {row[field_name]}"
+                    ) from e
 
             data.append(tuple(processed_row))
 
@@ -408,27 +443,27 @@ class KakaoDataProcessor:
 
     # 기존 메서드들을 새로운 구조로 래핑 (하위 호환성 유지)
     @classmethod
-    def process_diner_basic(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_basic(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_basic.csv 데이터 처리"""
         return cls.process_file("diner_basic", df)
 
     @classmethod
-    def process_diner_categories(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_categories(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_categories.csv 데이터 처리"""
         return cls.process_file("diner_categories", df)
 
     @classmethod
-    def process_diner_menus(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_menus(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_menus.csv 데이터 처리"""
         return cls.process_file("diner_menus", df)
 
     @classmethod
-    def process_diner_reviews(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_reviews(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_reviews.csv 데이터 처리"""
         return cls.process_file("diner_reviews", df)
 
     @classmethod
-    def process_diner_tags(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_tags(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_tags.csv 데이터 처리"""
         return cls.process_file("diner_tags", df)
 
@@ -436,8 +471,8 @@ class KakaoDataProcessor:
     def add_new_file_type(
         cls,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
     ) -> None:
         """
         새로운 파일 타입 추가

@@ -12,9 +12,9 @@ class KakaoReview(Base, ULIDMixin):
         Integer, ForeignKey("kakao_diner.diner_idx"), nullable=False, index=True
     )
     reviewer_id = Column(
-        Integer, ForeignKey("kakao_reviewer.reviewer_id"), nullable=False, index=True
+        String, ForeignKey("kakao_reviewer.reviewer_id"), nullable=False, index=True
     )
-    review_id = Column(Integer, unique=True, nullable=False, index=True)
+    review_id = Column(String, unique=True, nullable=False, index=True)
     reviewer_review = Column(Text)
     reviewer_review_date = Column(String(50))
     reviewer_review_score = Column(Float, nullable=False)

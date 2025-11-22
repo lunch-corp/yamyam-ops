@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends
 
@@ -32,7 +31,7 @@ def get_user_by_id(user_id: str):
     return user_service.get_by_id(user_id)
 
 
-@router.get("/", response_model=List[UserResponse], summary="사용자 목록 조회")
+@router.get("/", response_model=list[UserResponse], summary="사용자 목록 조회")
 def list_users(skip: int = 0, limit: int = 100):
     """사용자 목록 조회"""
     return user_service.get_list(skip=skip, limit=limit)

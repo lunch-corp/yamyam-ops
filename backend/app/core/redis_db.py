@@ -1,5 +1,7 @@
 import logging
+
 import redis.asyncio as aioredis
+
 from app.core.config import settings
 from app.services.redis_service import RedisService
 
@@ -37,5 +39,5 @@ class RedisDatabase:
             self.service = None
 
 
-# Global Redis instance
+# global redis instance
 redis_db = RedisDatabase()

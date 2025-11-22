@@ -12,24 +12,26 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       FAISS_SERVER_URL: ${FAISS_SERVER_URL:-}
-      
+
       # JWT 설정
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      
+
       # 환경 설정
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-False}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      
+
       # CORS 설정
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["https://what2eat.streamlit.app"]}
-      
+
       # Firebase 설정 (파일 경로 방식 우선, 환경 변수 방식도 지원)
       GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/firebase-key.json
       FIREBASE_KEY: ${FIREBASE_KEY:-}
+      WORKERS: ${WORKERS:-1}
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +40,7 @@ services:
     volumes:
       # 보안 강화: secrets 디렉토리를 읽기 전용으로 마운트
       - /etc/yamyam/secrets:/app/secrets:ro
+      - ./data:/app/data
     networks:
       - yamyam-network
     restart: unless-stopped
@@ -51,8 +54,9 @@ services:
     image: nginx:alpine
     container_name: yamyam-nginx-prod
     ports:
-      - "8808:8808"  # 내부 포트 8808로 변경 (외부 포트는 서버 관리자가 포워딩)
-      - "443:443"     # HTTPS (필요시)
+      - "8808:8808"
+      - "443:443"
+
     volumes:
       - ./nginx/conf/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL 인증서 디렉토리
@@ -69,7 +73,7 @@ services:
       retries: 3
 
   postgres:
-    image: postgres:15
+    image: postgis/postgis:15-3.4
     container_name: yamyam-postgres-prod
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -78,7 +82,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
-
     ports:
       - "15477:5432"  # 외부 접근용
       - "5477:5432"   # 내부 접근용
@@ -97,6 +100,8 @@ services:
     # 보안을 위해 외부 포트 노출 제거
     expose:
       - "6379"
+    volumes:
+      - redis_data:/data
     networks:
       - yamyam-network
     restart: unless-stopped
@@ -109,6 +114,7 @@ services:
 volumes:
   postgres_data:
   nginx_logs:
+  redis_data:
 
 networks:
   yamyam-network:

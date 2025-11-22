@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -88,13 +87,13 @@ def create_review(review: ReviewCreate, firebase_uid: str = Depends(get_firebase
 
 
 @router.get(
-    "/", response_model=List[ReviewWithItem], tags=["reviews"], summary="리뷰 목록 조회"
+    "/", response_model=list[ReviewWithItem], tags=["reviews"], summary="리뷰 목록 조회"
 )
 def list_reviews(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    firebase_uid: Optional[str] = None,
-    item_id: Optional[int] = None,
+    firebase_uid: str | None = None,
+    item_id: int | None = None,
 ):
     """리뷰 목록 조회"""
     try:

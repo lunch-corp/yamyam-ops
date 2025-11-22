@@ -2,12 +2,11 @@
 카카오 리뷰 서비스
 """
 
-from typing import List, Optional
+from fastapi import HTTPException, status
 
 from app.core.db import db
 from app.database.kakao_queries import (
     CHECK_KAKAO_DINER_EXISTS_BY_IDX,
-    CHECK_KAKAO_REVIEW_DUPLICATE,
     CHECK_KAKAO_REVIEW_EXISTS,
     CHECK_KAKAO_REVIEWER_EXISTS,
     DELETE_KAKAO_REVIEW_BY_ID,
@@ -24,7 +23,6 @@ from app.schemas.kakao_review import (
     KakaoReviewWithDetails,
 )
 from app.services.base_service import BaseService
-from fastapi import HTTPException, status
 
 
 class KakaoReviewService(
@@ -58,21 +56,10 @@ class KakaoReviewService(
                         detail="Kakao reviewer not found",
                     )
 
-                # 중복 리뷰 확인
-                if self._check_exists(CHECK_KAKAO_REVIEW_DUPLICATE, (data.review_id,)):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Kakao review already exists",
-                    )
-
-                # ULID 생성 (Python ulid_utils.py 사용)
-                ulid = self._generate_ulid()
-
-                # 리뷰 생성
+                # 리뷰 생성 (UPSERT로 변경되어 중복 확인 불필요)
                 cursor.execute(
                     INSERT_KAKAO_REVIEW,
                     (
-                        ulid,
                         data.diner_idx,
                         data.reviewer_id,
                         data.review_id,
@@ -103,12 +90,12 @@ class KakaoReviewService(
 
     def get_list(
         self,
-        skip: Optional[int] = 0,
-        limit: Optional[int] = 100,
-        diner_idx: Optional[int] = None,
-        reviewer_id: Optional[int] = None,
-        min_rating: Optional[float] = None,
-    ) -> List[KakaoReviewWithDetails]:
+        skip: int | None = 0,
+        limit: int | None = 100,
+        diner_idx: int | None = None,
+        reviewer_id: int | None = None,
+        min_rating: float | None = None,
+    ) -> list[KakaoReviewWithDetails]:
         """카카오 리뷰 목록 조회 (상세 정보 포함)"""
         # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
         if diner_idx or reviewer_id or min_rating is not None:
