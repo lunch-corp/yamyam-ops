@@ -492,7 +492,7 @@ class RedisService:
             f"diner:{rid}:similar_diner_ids": [v[0] for v in lst]
             for rid, lst in data.items()
         }
-        results = await self.create(items, expire=7 * 24 * 3600)
+        results = await self.create(items, expire=None)
         succeeded = sum(1 for v in results.values() if v)
         failed = len(results) - succeeded
         return {"loaded": succeeded, "skipped": failed}

@@ -3,14 +3,12 @@ import logging
 import redis.asyncio as aioredis
 
 from app.core.config import settings
-from app.services.redis_service import RedisService
 
 
 class RedisDatabase:
     def __init__(self):
         self.redis_url = settings.redis_url
         self._client: aioredis.Redis = None
-        self.service: RedisService = None
 
     async def get_client(self) -> aioredis.Redis:
         """Returns async Redis client"""
@@ -18,8 +16,6 @@ class RedisDatabase:
             self._client = await aioredis.from_url(
                 self.redis_url, decode_responses=True, max_connections=10
             )
-        if self.service is None:
-            self.service = RedisService(self._client)
         return self._client
 
     async def ping(self) -> bool:
@@ -36,7 +32,6 @@ class RedisDatabase:
         if self._client:
             await self._client.close()
             self._client = None
-            self.service = None
 
 
 # global redis instance
