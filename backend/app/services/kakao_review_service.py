@@ -204,7 +204,7 @@ class KakaoReviewService(
         """데이터베이스 행을 응답 모델로 변환"""
         return KakaoReviewResponse(
             id=row["id"],
-            kakao_review_id=row["kakao_review_id"],
+            kakao_review_id=row["review_id"],
             diner_idx=row["diner_idx"],
             reviewer_id=row["reviewer_id"],
             review_id=row["review_id"],
@@ -219,7 +219,7 @@ class KakaoReviewService(
         """데이터베이스 행을 상세 응답 모델로 변환"""
         return KakaoReviewWithDetails(
             id=row["id"],
-            kakao_review_id=row["kakao_review_id"],
+            kakao_review_id=row["review_id"],
             diner_idx=row["diner_idx"],
             reviewer_id=row["reviewer_id"],
             review_id=row["review_id"],

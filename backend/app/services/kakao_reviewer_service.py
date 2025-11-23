@@ -167,7 +167,6 @@ class KakaoReviewerService(
         """데이터베이스 행을 응답 모델로 변환"""
         return KakaoReviewerResponse(
             id=row["id"],
-            kakao_user_id=row["kakao_user_id"],
             reviewer_id=row["reviewer_id"],
             reviewer_user_name=row.get("reviewer_user_name"),
             reviewer_review_cnt=row["reviewer_review_cnt"],
