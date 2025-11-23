@@ -10,6 +10,7 @@ from app.api.v1 import (
     kakao_diners,
     kakao_reviewers,
     kakao_reviews,
+    recommendation,
     redis,
     reviews,
     upload,
@@ -95,6 +96,7 @@ app.include_router(
 )
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
 app.include_router(redis.router, prefix="/api/v1/redis", tags=["redis"])
+app.include_router(recommendation.router, prefix="/rec", tags=["recommendation"])
 
 
 @app.get("/")

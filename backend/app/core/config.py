@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     debug: bool = True
     log_level: str = "INFO"
 
+    # config path
+    config_root_path: str = "/app/config/beta"
+    node2vec_config_path: str = "/app/config/beta/models/graph/node2vec.yaml"
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, v):
