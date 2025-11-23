@@ -2,6 +2,9 @@
 카카오 리뷰 서비스
 """
 
+from datetime import datetime
+from typing import Optional
+
 from fastapi import HTTPException, status
 
 from app.core.db import db
@@ -90,15 +93,30 @@ class KakaoReviewService(
 
     def get_list(
         self,
-        skip: int | None = 0,
-        limit: int | None = 100,
-        diner_idx: int | None = None,
-        reviewer_id: int | None = None,
-        min_rating: float | None = None,
+        skip: Optional[int] = 0,
+        limit: Optional[int] = 100,
+        diner_idx: Optional[int] = None,
+        reviewer_id: Optional[int] = None,
+        min_rating: Optional[float] = None,
+        lower_datetime: Optional[str] = None,
+        upper_datetime: Optional[str] = None,
     ) -> list[KakaoReviewWithDetails]:
         """카카오 리뷰 목록 조회 (상세 정보 포함)"""
+        # Validate datetime format
+        if lower_datetime:
+            self._validate_datetime_format(lower_datetime, "lower_datetime")
+
+        if upper_datetime:
+            self._validate_datetime_format(upper_datetime, "upper_datetime")
+
         # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
-        if diner_idx or reviewer_id or min_rating is not None:
+        if (
+            diner_idx
+            or reviewer_id
+            or min_rating is not None
+            or lower_datetime
+            or upper_datetime
+        ):
             query = GET_KAKAO_REVIEWS_BASE_QUERY
 
             conditions = []
@@ -115,6 +133,14 @@ class KakaoReviewService(
             if min_rating is not None:
                 conditions.append("kr.reviewer_review_score >= %s")
                 params.append(min_rating)
+
+            if lower_datetime:
+                conditions.append("kr.reviewer_review_date >= %s")
+                params.append(lower_datetime)
+
+            if upper_datetime:
+                conditions.append("kr.reviewer_review_date <= %s")
+                params.append(upper_datetime)
 
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
@@ -206,3 +232,14 @@ class KakaoReviewService(
             diner_tag=row.get("diner_tag"),
             reviewer_user_name=row.get("reviewer_user_name"),
         )
+
+    @staticmethod
+    def _validate_datetime_format(datetime_str: str, param_name: str) -> None:
+        """Validate datetime string format (YYYY-MM-DD)"""
+        try:
+            datetime.strptime(datetime_str, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{param_name} must be in YYYY-MM-DD format",
+            )
