@@ -10,7 +10,17 @@ RUN apt-get update && apt-get install -y \
     curl \
     sshpass \
     openssh-client \
+    git \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
+
+# GIT HUB ARG & 환경변수 설정
+ARG GITHUB_TOKEN
+ENV GITHUB_TOKEN=${GITHUB_TOKEN}
+RUN git config --global url."https://oauth2:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+# Clone config repository
+RUN git clone https://github.com/lunch-corp/yamyam-lab-config.git /app/config
 
 # uv 설치
 RUN pip install uv
