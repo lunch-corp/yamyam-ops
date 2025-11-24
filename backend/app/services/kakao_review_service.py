@@ -5,6 +5,7 @@
 from datetime import datetime
 from typing import Optional
 
+import pandas as pd
 from fastapi import HTTPException, status
 
 from app.core.db import db
@@ -93,13 +94,14 @@ class KakaoReviewService(
 
     def get_list(
         self,
-        skip: Optional[int] = 0,
-        limit: Optional[int] = 100,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
         diner_idx: Optional[int] = None,
         reviewer_id: Optional[int] = None,
         min_rating: Optional[float] = None,
         lower_datetime: Optional[str] = None,
         upper_datetime: Optional[str] = None,
+        use_dataframe: Optional[bool] = False,
     ) -> list[KakaoReviewWithDetails]:
         """카카오 리뷰 목록 조회 (상세 정보 포함)"""
         # Validate datetime format
@@ -145,8 +147,15 @@ class KakaoReviewService(
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
 
-            query += " ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC LIMIT %s OFFSET %s"
-            params.extend([limit, skip])
+            query += " ORDER BY kr.reviewer_review_score DESC, kr.crawled_at DESC"
+
+            if limit:
+                query += " LIMIT %s "
+                params.append(limit)
+
+            if skip:
+                query += " OFFSET %s "
+                params.append(limit)
 
             results = self._execute_query_all(query, tuple(params))
         else:
@@ -160,7 +169,11 @@ class KakaoReviewService(
                     GET_ALL_KAKAO_REVIEWS_PAGINATED, (limit, skip)
                 )
 
-        return [self._convert_to_details_response(row) for row in results]
+        return (
+            [self._convert_to_details_response(row) for row in results]
+            if not use_dataframe
+            else pd.DataFrame(results)
+        )
 
     def update(self, review_id: int, data: KakaoReviewUpdate) -> KakaoReviewResponse:
         """카카오 리뷰 정보 업데이트"""
