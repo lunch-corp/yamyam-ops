@@ -144,6 +144,7 @@ cp env.example .env
 # - REDIS_URL: Redis 연결 정보
 # - SECRET_KEY: JWT 시크릿 키
 # - Firebase 설정: 인증용 서비스 계정 키
+# - GITHUB_TOKEN: lunch-corp org에서 발급한 github token
 ```
 
 ### 2. Docker Compose로 서비스 시작

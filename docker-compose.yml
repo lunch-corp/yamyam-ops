@@ -5,6 +5,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
     container_name: yamyam-backend
     ports:
       - "8000:8000"
@@ -47,6 +49,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - config_data:/app/config
       - ./backend/firebase-service-account-key.json:/app/firebase-key.json
     restart: unless-stopped
     healthcheck:
@@ -89,3 +92,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  config_data:
