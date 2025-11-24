@@ -15,7 +15,6 @@ from app.services.kakao_reviewer_service import KakaoReviewerService
 
 class RecommendationService:
     CATEGORY_COLUMNS = [
-        "industry_category",
         "diner_category_large",
         "diner_category_middle",
         "diner_category_small",
@@ -24,6 +23,7 @@ class RecommendationService:
     DINER_IDX = "diner_idx"
 
     def __init__(self):
+        logging.info("hello")
         self.settings = Settings()
         self.config = load_yaml(self.settings.node2vec_config_path)
         self.preprocess_config = load_yaml(
@@ -42,9 +42,16 @@ class RecommendationService:
     def _load_dataset(self):
         # at first, load all of the dataset.
         # however, after creating csr_matrix, those data will be removed
-        self.review = KakaoReviewService().get_list()
-        self.diner = KakaoDinerService().get_list()
-        self.reivewer = KakaoReviewerService().get_list()
+        self.review = KakaoReviewService().get_list(use_dataframe=True)
+        self.diner = KakaoDinerService().get_list(use_dataframe=True)
+        self.reviewer = KakaoReviewerService().get_list(use_dataframe=True)
+
+        # convert string type to integer because their data types are defined as String.
+        # refer to app/models for more detail defined table schema
+        self.review["reviewer_id"] = self.review["reviewer_id"].astype(int)
+        self.review["review_id"] = self.review["review_id"].astype(int)
+        self.reviewer["reviewer_id"] = self.reviewer["reviewer_id"].astype(int)
+
         self.diner_category = self.diner[[self.DINER_IDX] + self.CATEGORY_COLUMNS]
         self.diner = self.diner[
             [col for col in self.diner.columns if col not in self.CATEGORY_COLUMNS]
@@ -73,9 +80,10 @@ class RecommendationService:
                 end_time_point=self.config.preprocess.data.end_time_point,
                 test=False,
                 config_root_path=self.settings.config_root_path,
+                validate_data=False,  # do not validate data
                 data_source="local",  # local loading, not from google drive
                 review=self.review,
-                reviewer=self.reivewer,
+                reviewer=self.reviewer,
                 diner=self.diner,
                 category=self.diner_category,
             ),
@@ -100,7 +108,10 @@ class RecommendationService:
     ):
         # initialize dataset if yet initialized
         if self.csr_matrix is None:
+            logging.info("Loading dataset and user_cf model for first time")
             self._init_models()
+        else:
+            logging.info("Using loaded user_cf model")
 
         return self.user_cf.find_similar_users(
             liked_item_ids=liked_diner_ids,
