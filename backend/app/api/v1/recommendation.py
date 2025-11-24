@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 
 from app.schemas.recommendation import UserCFRequest, UserCFResponse
 from app.services.recommendation_service import RecommendationService
@@ -26,19 +26,13 @@ async def get_most_similar_user(request: UserCFRequest):
     Returns in Response Body:
         most_similar_reviewer_id (int): Reviewer id using User Based CF.
     """
-    try:
-        logging.info(
-            f"Request data - liked_diner_ids: {request.liked_diner_ids}, scores: {request.scores_of_liked_diner_ids}"
+    logging.info(
+        f"Request data - liked_diner_ids: {request.liked_diner_ids}, scores: {request.scores_of_liked_diner_ids}"
+    )
+    most_similar_reviewer_id = (
+        recommendation_service.get_most_similar_reviewer_with_user_cf(
+            liked_diner_ids=request.liked_diner_ids,
+            scores_of_liked_diner_ids=request.scores_of_liked_diner_ids,
         )
-        most_similar_reviewer_id = (
-            recommendation_service.get_most_similar_reviewer_with_user_cf(
-                liked_diner_ids=request.liked_diner_ids,
-                scores_of_liked_diner_ids=request.scores_of_liked_diner_ids,
-            )
-        )
-        return UserCFResponse(reviewer_id=most_similar_reviewer_id)
-    except Exception as e:
-        logging.error(f"User CF recommendation error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    )
+    return UserCFResponse(reviewer_id=most_similar_reviewer_id)
