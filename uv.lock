@@ -5498,7 +5498,7 @@ requires-dist = [
 [[package]]
 name = "yamyam-lab"
 version = "1.0.0"
-source = { git = "https://github.com/lunch-corp/yamyam-lab.git?rev=v1.0.6#42c8afb169eaef30f310ddaab5d9c8eae982ccc0" }
+source = { git = "https://github.com/lunch-corp/yamyam-lab.git?rev=v1.0.6#8d15f7bf1f9ca2f1af179e041949ec6ff7f0ad1e" }
 dependencies = [
     { name = "catboost" },
     { name = "easydict" },
