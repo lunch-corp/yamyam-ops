@@ -95,7 +95,7 @@ app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
 )
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
-app.include_router(redis.router, prefix="/api/v1/redis", tags=["redis"])
+app.include_router(redis.router, prefix="/redis", tags=["redis"])
 app.include_router(recommendation.router, prefix="/rec", tags=["recommendation"])
 
 
@@ -140,7 +140,7 @@ def get_info():
         "endpoints": {
             "users": "/users",
             "upload": "/upload",
-            "redis": "/api/v1/redis",
+            "redis": "/redis",
             "docs": "/docs",
             "health": "/health",
         },
