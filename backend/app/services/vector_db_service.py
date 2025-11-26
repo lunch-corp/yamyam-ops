@@ -7,6 +7,7 @@ import faiss
 import numpy as np
 
 from app.schemas.vector_db import (
+    SearchVectorResponse,
     SimilarResponse,
     StoreVectorsResponse,
     Vector,
@@ -125,6 +126,24 @@ class VectorDBService:
             num_vectors=len(self._artifacts[vector_type].ids),
             vector_dimension=dimension,
         )
+
+    def search_vector(self, vector_type: VectorType, id: str) -> SearchVectorResponse:
+        """Search for a vector by its ID and return the embedding"""
+        artifacts = self._ensure_index(vector_type)
+
+        try:
+            # Find the index of the ID in the list
+            idx = artifacts.ids.index(id)
+        except ValueError:
+            raise ValueError(
+                f"ID '{id}' not found in {vector_type.value} index. "
+                f"Available IDs: {len(artifacts.ids)}"
+            )
+
+        # Get the embedding at that index
+        embedding = artifacts.embeddings[idx].tolist()
+
+        return SearchVectorResponse(id=id, embedding=embedding, vector_type=vector_type)
 
     def _normalize_embeddings(
         self, embeddings: np.ndarray, ids: list[str]
