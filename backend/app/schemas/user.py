@@ -1,4 +1,11 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
+
+
+class UserIdType(StrEnum):
+    ID = "id"
+    FIREBASE_UID = "firebase_uid"
 
 
 class UserBase(BaseModel):
@@ -19,6 +26,7 @@ class UserUpdate(BaseModel):
     email: str | None = Field(None, max_length=255)
     display_name: str | None = Field(None, max_length=100)
     photo_url: str | None = Field(None, max_length=500)
+    kakao_reviewer_id: str | None = Field(None, max_length=20)
 
 
 class User(UserBase):
@@ -35,6 +43,7 @@ class UserResponse(BaseModel):
     id: str  # ULID
     firebase_uid: str
     name: str
+    kakao_reviewer_id: str | None
     email: str | None
     display_name: str | None
     photo_url: str | None

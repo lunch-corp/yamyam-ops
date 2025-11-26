@@ -1,9 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.core.dependencies import get_firebase_uid
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserIdType, UserResponse, UserUpdate
 from app.services.user_service import UserService
 
 router = APIRouter()
@@ -26,9 +26,14 @@ def get_current_user(firebase_uid: str = Depends(get_firebase_uid)):
 
 
 @router.get("/{user_id}", response_model=UserResponse, summary="사용자 ID로 조회")
-def get_user_by_id(user_id: str):
-    """사용자 ID로 조회 (ULID 기준)"""
-    return user_service.get_by_id(user_id)
+def get_user_by_id(
+    user_id: str,
+    user_id_type: UserIdType = Query(
+        ..., description="ID 타입 (ULID 또는 Firebase UID)"
+    ),
+):
+    """사용자 ID로 조회 (ULID 또는 Firebase ID 기준)"""
+    return user_service.get_by_id(user_id, user_id_type)
 
 
 @router.get("/", response_model=list[UserResponse], summary="사용자 목록 조회")
@@ -38,9 +43,15 @@ def list_users(skip: int = 0, limit: int = 100):
 
 
 @router.put("/{user_id}", response_model=UserResponse, summary="사용자 정보 수정")
-def update_user(user_id: str, user_update: UserUpdate):
+def update_user(
+    user_id: str,
+    user_update: UserUpdate,
+    user_id_type: UserIdType = Query(
+        ..., description="ID 타입 (ULID 또는 Firebase UID)"
+    ),
+):
     """사용자 정보 업데이트 (PostgreSQL DB에서 직접 업데이트)"""
-    return user_service.update(user_id, user_update)
+    return user_service.update(user_id, user_update, user_id_type)
 
 
 @router.put("/me", response_model=UserResponse, summary="내 프로필 수정")
