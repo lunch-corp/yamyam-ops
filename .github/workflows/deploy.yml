@@ -14,28 +14,28 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup SSH
       uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
+
     - name: Add server to known hosts
       run: |
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
         ssh-keyscan -H -p 10103 ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-        
+
     - name: Create secrets directory on server
       run: |
         ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "${{ secrets.SERVER_USER }}" "${{ secrets.SUDO_PASSWORD }}" << 'ENDSSH'
           SERVER_USER="$1"
           SUDO_PASSWORD="$2"
-          
+
           if [ -n "$SUDO_PASSWORD" ]; then
             echo "$SUDO_PASSWORD" | sudo -S mkdir -p /etc/yamyam/secrets
             echo "$SUDO_PASSWORD" | sudo -S chown "$SERVER_USER:$SERVER_USER" /etc/yamyam/secrets
@@ -46,7 +46,7 @@ jobs:
             sudo chmod 700 /etc/yamyam/secrets
           fi
         ENDSSH
-        
+
     - name: Deploy environment variables
       run: |
         # 이미지 태그 결정
@@ -63,77 +63,81 @@ jobs:
         else
           IMAGE_TAG="latest"
         fi
-        
+
         echo "배포할 이미지 태그: $IMAGE_TAG"
-        
+
         # .env 파일 생성
         cat > .env.tmp << EOF
         # Docker Hub 설정
         DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
         IMAGE_TAG=$IMAGE_TAG
-        
+
         # 데이터베이스 설정
         POSTGRES_USER=${{ secrets.POSTGRES_USER }}
         POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
         POSTGRES_DB=${{ secrets.POSTGRES_DB }}
         DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}
-        
+
         # Redis 설정
         REDIS_URL=redis://redis:6379
-        
+
         # JWT 설정
         JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
         JWT_ALGORITHM=HS256
         ACCESS_TOKEN_EXPIRE_MINUTES=30
         REFRESH_TOKEN_EXPIRE_DAYS=7
-        
+
         # 환경 설정
         ENVIRONMENT=production
         DEBUG=False
         LOG_LEVEL=INFO
-        
+
+        # node2vec 모델 path 설정
+        REMOTE_N2V_WEIGHT_PATH=${{ secrets.REMOTE_N2V_WEIGHT_PATH }}
+        REMOTE_N2V_UTIL_PATH=${{ secrets.REMOTE_N2V_UTIL_PATH }}
+
         # CORS 설정
         ALLOWED_ORIGINS=["https://what2eat.streamlit.app", "https://your-domain.com"]
         EOF
-        
+
         # 서버로 .env 파일 전송
         scp -P 10103 .env.tmp ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/yamyam/secrets/.env
         rm .env.tmp
-        
+
         # 파일 권한 설정
         ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "${{ secrets.SUDO_PASSWORD }}" << 'ENDSSH'
           SUDO_PASSWORD="$1"
-          
+
           if [ -n "$SUDO_PASSWORD" ]; then
             echo "$SUDO_PASSWORD" | sudo -S chmod 600 /etc/yamyam/secrets/.env
           else
             sudo chmod 600 /etc/yamyam/secrets/.env
           fi
         ENDSSH
-        
-        
+
+
     - name: Deploy application
       run: |
         # 서버에서 DEPLOY_PATH 절대 경로 확인 (~ 확장)
         DEPLOY_PATH_FULL=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "DEPLOY_PATH=\"${{ secrets.DEPLOY_PATH }}\"; eval echo \"\$DEPLOY_PATH\"")
-        
+
         # 서버에서 실행할 스크립트
         ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "$DEPLOY_PATH_FULL" << 'ENDSSH'
           DEPLOY_PATH_FULL="$1"
-          
+
           cd "$DEPLOY_PATH_FULL" || {
             echo "❌ 배포 경로를 찾을 수 없습니다: $DEPLOY_PATH_FULL"
             exit 1
           }
-          
+
           echo "현재 디렉토리: $(pwd)"
           echo ""
-          
+
           # .env 파일을 프로젝트 루트로 심볼릭 링크
           echo "심볼릭 링크 생성 중..."
           ln -sf /etc/yamyam/secrets/.env .env
           echo ""
-          
+
           # Docker Compose 명령 확인
           if command -v docker-compose &> /dev/null; then
             DOCKER_COMPOSE_CMD="docker-compose"
@@ -143,80 +147,80 @@ jobs:
             echo "❌ docker-compose를 찾을 수 없습니다"
             exit 1
           fi
-          
+
           echo "Docker Compose 명령: $DOCKER_COMPOSE_CMD"
           echo ""
-          
+
           # 기존 컨테이너 중지
           echo "기존 컨테이너 중지 중..."
           $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml down || true
           echo ""
-          
+
           # 최신 이미지 pull
           echo "최신 이미지 pull 중..."
           $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml pull
           echo ""
-          
+
           # 컨테이너 시작
           echo "컨테이너 시작 중..."
           $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
           echo ""
-          
+
           echo "✅ 배포 완료!"
         ENDSSH
-        
+
     - name: Verify deployment
       run: |
         # 헬스체크 대기
         echo "헬스 체크 대기 중... (30초)"
         sleep 30
-        
+
         # 헬스체크 수행 (최대 10회 재시도)
         MAX_ATTEMPTS=10
         ATTEMPT=1
-        
+
         while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
           echo "헬스 체크 시도 $ATTEMPT/$MAX_ATTEMPTS..."
-          
+
           # 방법 1: nginx를 통해 헬스체크 시도 (nginx가 backend로 프록시)
           echo "→ nginx를 통한 헬스체크 시도..."
           RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "curl -f -w '\nHTTP Status: %{http_code}' http://localhost:8808/health 2>&1")
           EXIT_CODE=$?
-          
+
           if [ $EXIT_CODE -eq 0 ]; then
             echo "$RESPONSE"
             echo "✅ 헬스 체크 통과! (nginx를 통한 접근)"
             exit 0
           fi
-          
+
           echo "$RESPONSE"
           echo "nginx를 통한 접근 실패, backend 컨테이너에서 직접 시도..."
-          
+
           # 방법 2: backend 컨테이너에서 직접 헬스체크 (fallback)
           RESPONSE=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "docker exec yamyam-backend-prod curl -f -w '\nHTTP Status: %{http_code}' http://localhost:8080/health 2>&1")
           EXIT_CODE=$?
-          
+
           echo "$RESPONSE"
-          
+
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ 헬스 체크 통과! (backend 컨테이너 직접 접근)"
             exit 0
           fi
-          
+
           sleep 10
           ATTEMPT=$((ATTEMPT + 1))
         done
-        
+
         echo "❌ 헬스 체크 실패"
         echo ""
         echo "=== 디버깅 정보 수집 ==="
-        
+
         # 실패 시 컨테이너 상태 및 로그 확인
         DEPLOY_PATH_FULL=$(ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "DEPLOY_PATH=\"${{ secrets.DEPLOY_PATH }}\"; eval echo \"\$DEPLOY_PATH\"")
         ssh -p 10103 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash -s "$DEPLOY_PATH_FULL" << 'ENDSSH'
           DEPLOY_PATH_FULL="$1"
           cd "$DEPLOY_PATH_FULL" || exit 1
-          
+
           if command -v docker-compose &> /dev/null; then
             DOCKER_COMPOSE_CMD="docker-compose"
           elif docker compose version &> /dev/null 2>&1; then
@@ -225,22 +229,22 @@ jobs:
             echo "docker-compose를 찾을 수 없습니다"
             exit 1
           fi
-          
+
           echo ""
           echo "=== 컨테이너 상태 ==="
           $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps
-          
+
           echo ""
           echo "=== Backend 컨테이너 로그 (최근 50줄) ==="
           $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=50 backend
-          
+
           echo ""
           echo "=== Nginx 컨테이너 로그 (최근 30줄) ==="
           $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=30 nginx
         ENDSSH
-        
+
         exit 1
-        
+
     - name: Notify deployment status
       if: always()
       run: |
@@ -250,4 +254,3 @@ jobs:
           echo "❌ 배포 실패!"
           exit 1
         fi
-
