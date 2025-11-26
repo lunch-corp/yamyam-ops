@@ -7,7 +7,11 @@ from yamyam_lab.data.csr import CsrDatasetLoader
 from yamyam_lab.model.classic_cf.user_based import UserBasedCollaborativeFiltering
 from yamyam_lab.tools.config import load_yaml
 
+from app.api.v1.users import user_service
+from app.api.v1.vector_db import vector_db_service
 from app.core.config import Settings
+from app.schemas.user import UserIdType
+from app.schemas.vector_db import VectorType
 from app.services.kakao_diner_service import KakaoDinerService
 from app.services.kakao_review_service import KakaoReviewService
 from app.services.kakao_reviewer_service import KakaoReviewerService
@@ -22,8 +26,7 @@ class RecommendationService:
     ]
     DINER_IDX = "diner_idx"
 
-    def __init__(self):
-        logging.info("hello")
+    def __init__(self) -> None:
         self.settings = Settings()
         self.config = load_yaml(self.settings.node2vec_config_path)
         self.preprocess_config = load_yaml(
@@ -33,13 +36,13 @@ class RecommendationService:
         self.user_mapping: dict = None
         self.diner_mapping: dict = None
 
-    def _init_models(self):
+    def _init_models(self) -> None:
         self._load_dataset()
         self._prepare_user_cf()
         self._remove_dataset()
         logging.info("Successfully initialized user_cf model")
 
-    def _load_dataset(self):
+    def _load_dataset(self) -> None:
         # at first, load all of the dataset.
         # however, after creating csr_matrix, those data will be removed
         self.review = KakaoReviewService().get_list(use_dataframe=True)
@@ -58,13 +61,13 @@ class RecommendationService:
         ]
         logging.info("Successfully loaded data from postgres db")
 
-    def _remove_dataset(self):
+    def _remove_dataset(self) -> None:
         for attr in ["review", "diner", "reivewer", "diner_category"]:
             if hasattr(self, attr):
                 delattr(self, attr)
         logging.info("Successfully deleted data")
 
-    def _prepare_user_cf(self):
+    def _prepare_user_cf(self) -> None:
         fe = self.config.preprocess.feature_engineering
 
         data_loader = CsrDatasetLoader(
@@ -105,7 +108,17 @@ class RecommendationService:
 
     def get_most_similar_reviewer_with_user_cf(
         self, liked_diner_ids: list[int], scores_of_liked_diner_ids: list[int]
-    ):
+    ) -> int:
+        """
+        Get most similar one reviewer to what2eat user using user cf.
+
+        Args:
+            liked_diner_ids (List[int]): List of diner_ids which what2eat users gave ratings.
+            scores_of_liked_diner_ids (List[int]): List of scores related with `liked_diner_ids`.
+
+        Returns (int):
+            Reviewer id using User Based CF.
+        """
         # initialize dataset if yet initialized
         if self.csr_matrix is None:
             logging.info("Loading dataset and user_cf model for first time")
@@ -117,3 +130,50 @@ class RecommendationService:
             liked_item_ids=liked_diner_ids,
             scores_of_liked_items=scores_of_liked_diner_ids,
         )
+
+    def get_personalized_ranked_diners(
+        self, firebase_uid: str, diner_ids: list[int]
+    ) -> list[int]:
+        """
+        Given firebase_uid, find matched kakao_reviewer_id and sort diner_ids with
+        personalized ranking using embedding of searched kakao_reviewer_id and diner_ids.
+
+        Args:
+            firebase_uid (str): Unique value in firebase.
+            diner_ids (list[int]): List of diner_ids to be ranked.
+
+        Returns (list[int]):
+            Personalized ranked diner_ids.
+        """
+        # get kakao_reviewer_id from `users` table
+        kakao_reviewer_id = user_service.get_by_id(
+            user_id=firebase_uid,
+            user_id_type=UserIdType.FIREBASE_UID,
+        ).kakao_reviewer_id
+
+        logging.info(f"Get kakao_reviewer_id: {kakao_reviewer_id}")
+
+        # if user does not have kakao_reviewer_id, raise error
+        if kakao_reviewer_id is None:
+            raise ValueError(
+                "kakao_reviewer_id must be set for personal recommendation"
+            )
+
+        # get embedding for kakao_reviewer_id
+        user_embedding = vector_db_service.search_vector(
+            vector_type=VectorType.USER_N2V_VEC, id=kakao_reviewer_id
+        ).embedding
+
+        # sort diner_ids using score, i.e., dot product btw user and diner embeddings
+        sorted_result = vector_db_service.get_similar(
+            vector_type=VectorType.DINER_N2V_VEC,
+            query_id=kakao_reviewer_id,
+            query_vec=user_embedding,
+            top_k=None,
+            filtering_ids=diner_ids,
+        ).neighbors
+
+        logging.info("Sorted result")
+        logging.info("\n".join([f"{res.id}: {res.score}" for res in sorted_result]))
+
+        return [res.id for res in sorted_result], [res.score for res in sorted_result]

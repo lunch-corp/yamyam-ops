@@ -36,3 +36,33 @@ class UserCFResponse(BaseModel):
             ]
         }
     }
+
+
+class PersonalRecRequest(BaseModel):
+    firebase_uid: str = Field(..., description="Unique id from firebase")
+    diner_ids: list[int] = Field(
+        ...,
+        description="List of diner ids after first filtering",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "firebase_uid": "643UVNQPFFVZXjgRULFjaDMztLE2",
+                    "diner_ids": [2000734287, 12386670, 8431628],
+                }
+            ]
+        }
+    }
+
+
+class PersonalRecResponse(BaseModel):
+    diner_ids: list[int] = Field(
+        ...,
+        description="List of ranked diner ids after dot product embeddings",
+    )
+    scores: list[float] = Field(
+        ...,
+        description="List of scores related to each diner_id",
+    )
