@@ -2,7 +2,12 @@ import logging
 
 from fastapi import APIRouter, status
 
-from app.schemas.recommendation import UserCFRequest, UserCFResponse
+from app.schemas.recommendation import (
+    PersonalRecRequest,
+    PersonalRecResponse,
+    UserCFRequest,
+    UserCFResponse,
+)
 from app.services.recommendation_service import RecommendationService
 
 router = APIRouter()
@@ -18,13 +23,6 @@ recommendation_service = RecommendationService()
 async def get_most_similar_user(request: UserCFRequest):
     """
     Find most similar user using User Based CF.
-
-    Args from Request Body:
-        liked_diner_ids (List[int]): List of diner_ids which what2eat users gave ratings.
-        scores_of_liked_diner_ids (List[int]): List of scores related with `liked_diner_ids`.
-
-    Returns in Response Body:
-        most_similar_reviewer_id (int): Reviewer id using User Based CF.
     """
     logging.info(
         f"Request data - liked_diner_ids: {request.liked_diner_ids}, scores: {request.scores_of_liked_diner_ids}"
@@ -36,3 +34,23 @@ async def get_most_similar_user(request: UserCFRequest):
         )
     )
     return UserCFResponse(reviewer_id=most_similar_reviewer_id)
+
+
+@router.post(
+    "/personal",
+    response_model=PersonalRecResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Rank diner_ids using trained embeddings",
+)
+async def get_personalized_ranked_diners(request: PersonalRecRequest):
+    """
+    Given list of diner_ids, rank them by dot product btw user and diner embeddings.
+    """
+    logging.info(
+        f"Request data - firebase_uid: {request.firebase_uid}, diner_ids: {request.diner_ids[:10]}"
+    )
+    diner_ids, scores = recommendation_service.get_personalized_ranked_diners(
+        firebase_uid=request.firebase_uid,
+        diner_ids=request.diner_ids,
+    )
+    return PersonalRecResponse(diner_ids=diner_ids, scores=scores)

@@ -19,7 +19,7 @@ from app.database.user_queries import (
     UPDATE_USER_BY_FIREBASE_UID,
     UPDATE_USER_BY_ID,
 )
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserIdType, UserResponse, UserUpdate
 from app.services.base_service import BaseService
 
 
@@ -52,6 +52,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                         data.email,
                         data.display_name,
                         data.photo_url,
+                        None,  # kakao_reviewer_id not yet set
                     ),
                 )
 
@@ -63,10 +64,15 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         except Exception as e:
             self._handle_exception("creating user", e)
 
-    def get_by_id(self, user_id: str) -> UserResponse:
-        """ID(ULID)로 사용자 조회"""
+    def get_by_id(self, user_id: str, user_id_type: UserIdType) -> UserResponse:
+        """ID(ULID) 또는 FIREBASE_UID로 사용자 조회"""
 
-        result = self._execute_query(GET_USER_BY_ID, (user_id,))
+        # Choose the correct query based on user_id_type
+        if user_id_type == UserIdType.ID:
+            result = self._execute_query(GET_USER_BY_ID, (user_id,))
+        else:  # firebase_uid
+            result = self._execute_query(GET_USER_BY_FIREBASE_UID, (user_id,))
+
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -94,10 +100,20 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         results = self._execute_query_all(GET_ALL_USERS, (limit, skip))
         return [self._convert_to_response(row) for row in results]
 
-    def update(self, user_id: str, data: UserUpdate) -> UserResponse:
+    def update(
+        self, user_id: str, data: UserUpdate, user_id_type: UserIdType = UserIdType.ID
+    ) -> UserResponse:
         """사용자 정보 업데이트 (PostgreSQL DB에서 직접 업데이트)"""
+        # Choose the correct existence check and update query based on user_id_type
+        if user_id_type == UserIdType.ID:
+            exists_query = CHECK_USER_EXISTS_BY_ID
+            update_query = UPDATE_USER_BY_ID
+        else:  # firebase_uid
+            exists_query = CHECK_USER_EXISTS
+            update_query = UPDATE_USER_BY_FIREBASE_UID
+
         # 사용자 존재 확인
-        if not self._check_exists(CHECK_USER_EXISTS_BY_ID, (user_id,)):
+        if not self._check_exists(exists_query, (user_id,)):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="사용자를 찾을 수 없습니다.",
@@ -110,6 +126,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
             "email": data.email,
             "display_name": data.display_name,
             "photo_url": data.photo_url,
+            "kakao_reviewer_id": data.kakao_reviewer_id,
         }
 
         for field, value in field_mapping.items():
@@ -119,7 +136,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         # user_id를 마지막에 추가
         update_values.append(user_id)
 
-        result = self._execute_query(UPDATE_USER_BY_ID, tuple(update_values))
+        result = self._execute_query(update_query, tuple(update_values))
         return self._convert_to_response(result)
 
     def delete(self, user_id: str) -> dict:
@@ -220,6 +237,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                                     email,
                                     display_name,
                                     photo_url,
+                                    None,  # kakao_reviewer_id not yet set
                                 ),
                             )
                             created_count += 1
@@ -249,6 +267,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         return UserResponse(
             id=row["id"],
             firebase_uid=row["firebase_uid"],
+            kakao_reviewer_id=row["kakao_reviewer_id"],
             name=row["name"],
             email=row["email"],
             display_name=row["display_name"],
