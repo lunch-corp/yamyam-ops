@@ -17,12 +17,11 @@ class RedisService:
     async def initialize_data(self):
         try:
             host = os.getenv("REMOTE_JSON_HOST")
-            port = os.getenv("REMOTE_JSON_PORT")
             user = os.getenv("REMOTE_JSON_USER")
             pw = os.getenv("REMOTE_JSON_PASS")
             remote_path = os.getenv("REMOTE_JSON_PATH")
 
-            if not all([host, port, user, pw, remote_path]):
+            if not all([host, user, pw, remote_path]):
                 logging.warning(
                     "Remote JSON server environment variables are not fully set"
                 )
@@ -30,7 +29,7 @@ class RedisService:
 
             logging.info("Fetching similar restaurants JSON from remote server...")
             cmd = (
-                f"sshpass -p {pw} ssh -p {port} "
+                f"sshpass -p {pw} ssh -p 10103 "
                 f"-o StrictHostKeyChecking=no {user}@{host} cat {remote_path}"
             )
 
