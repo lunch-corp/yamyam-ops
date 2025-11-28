@@ -96,6 +96,10 @@ jobs:
         DEBUG=False
         LOG_LEVEL=INFO
 
+        # node2vec 모델 path 설정
+        REMOTE_N2V_WEIGHT_PATH=${{ secrets.REMOTE_N2V_WEIGHT_PATH }}
+        REMOTE_N2V_UTIL_PATH=${{ secrets.REMOTE_N2V_UTIL_PATH }}
+
         # CORS 설정
         ALLOWED_ORIGINS=["https://what2eat.streamlit.app", "https://your-domain.com"]
         EOF
