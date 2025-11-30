@@ -1,9 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.dependencies import get_firebase_uid
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import OnboardingDataCreate, UserCreate, UserResponse, UserUpdate
 from app.services.user_service import UserService
 
 router = APIRouter()
@@ -71,6 +71,57 @@ def delete_current_user(firebase_uid: str = Depends(get_firebase_uid)):
 def sync_user_with_firebase(firebase_uid: str = Depends(get_firebase_uid)):
     """Firebase Auth 정보로 현재 사용자 정보 동기화 (부분 업데이트)"""
     return user_service.sync_with_firebase(firebase_uid)
+
+
+@router.post(
+    "/sync-from-firebase",
+    response_model=UserResponse,
+    summary="Firebase 회원가입 직후 사용자 생성",
+)
+def sync_user_from_firebase(firebase_uid: str = Depends(get_firebase_uid)):
+    """
+    Firebase 회원가입 직후 PostgreSQL에 사용자 생성
+    
+    - What2Eat에서 회원가입 성공 후 호출
+    - Firebase ID Token으로 인증
+    - 이미 존재하는 경우 기존 사용자 반환
+    """
+    from app.core.firebase_auth import firebase_auth
+
+    # Firebase에서 사용자 정보 가져오기
+    firebase_user = firebase_auth.get_user_by_uid(firebase_uid)
+    if not firebase_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Firebase 사용자를 찾을 수 없습니다.",
+        )
+
+    email = firebase_user.get("email")
+    name = firebase_user.get("display_name") or (
+        email.split("@")[0] if email else firebase_uid
+    )
+
+    return user_service.create_from_firebase(firebase_uid, email, name)
+
+
+@router.patch(
+    "/me/onboarding",
+    response_model=UserResponse,
+    summary="온보딩 데이터 저장",
+)
+def save_onboarding_data(
+    onboarding_data: OnboardingDataCreate,
+    firebase_uid: str = Depends(get_firebase_uid),
+):
+    """
+    온보딩 완료 시 사용자 프로필 데이터 저장
+    
+    - What2Eat에서 온보딩 완료 후 호출
+    - Firebase ID Token으로 인증
+    - 온보딩 데이터 및 평가 데이터 저장
+    - has_completed_onboarding, is_personalization_enabled 플래그 업데이트
+    """
+    return user_service.update_onboarding(firebase_uid, onboarding_data)
 
 
 @router.post("/sync-all", summary="전체 사용자 동기화")

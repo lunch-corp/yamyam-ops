@@ -16,10 +16,12 @@ from app.database.user_queries import (
     GET_USER_ID_BY_FIREBASE_UID,
     INSERT_USER,
     INSERT_USER_FOR_SYNC,
+    INSERT_USER_FROM_FIREBASE,
     UPDATE_USER_BY_FIREBASE_UID,
     UPDATE_USER_BY_ID,
+    UPDATE_USER_ONBOARDING,
 )
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import OnboardingDataCreate, UserCreate, UserResponse, UserUpdate
 from app.services.base_service import BaseService
 
 
@@ -244,6 +246,92 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         except Exception as e:
             self._handle_exception("syncing all users from firebase", e)
 
+    def create_from_firebase(
+        self, firebase_uid: str, email: str | None, name: str
+    ) -> UserResponse:
+        """Firebase 회원가입 직후 사용자 생성"""
+        try:
+            with db.get_cursor() as (cursor, conn):
+                # 중복 사용자 확인
+                if self._check_exists(CHECK_USER_EXISTS, (firebase_uid,)):
+                    # 이미 존재하는 경우 기존 사용자 반환
+                    result = self._execute_query(GET_USER_BY_FIREBASE_UID, (firebase_uid,))
+                    return self._convert_to_response(result)
+
+                # ULID 생성
+                user_id = self._generate_ulid()
+
+                cursor.execute(
+                    INSERT_USER_FROM_FIREBASE,
+                    (
+                        user_id,
+                        firebase_uid,
+                        name,
+                        email,
+                        name,  # display_name = name
+                        None,  # photo_url
+                    ),
+                )
+
+                result = cursor.fetchone()
+                conn.commit()
+
+                return self._convert_to_response(result)
+
+        except Exception as e:
+            self._handle_exception("creating user from firebase", e)
+
+    def update_onboarding(
+        self, firebase_uid: str, onboarding_data: OnboardingDataCreate
+    ) -> UserResponse:
+        """온보딩 완료 시 사용자 프로필 업데이트"""
+        try:
+            from datetime import datetime
+
+            with db.get_cursor() as (cursor, conn):
+                # 사용자 존재 확인
+                if not self._check_exists(CHECK_USER_EXISTS, (firebase_uid,)):
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="사용자를 찾을 수 없습니다.",
+                    )
+
+                # 온보딩 완료 시각
+                onboarding_completed_at = datetime.now()
+
+                cursor.execute(
+                    UPDATE_USER_ONBOARDING,
+                    (
+                        True,  # is_personalization_enabled
+                        True,  # has_completed_onboarding
+                        onboarding_completed_at,
+                        onboarding_data.location,
+                        onboarding_data.location_method,
+                        onboarding_data.user_lat,
+                        onboarding_data.user_lon,
+                        onboarding_data.birth_year,
+                        onboarding_data.gender,
+                        onboarding_data.dining_companions,
+                        onboarding_data.regular_budget,
+                        onboarding_data.special_budget,
+                        onboarding_data.spice_level,
+                        onboarding_data.allergies,
+                        onboarding_data.dislikes,
+                        onboarding_data.food_preferences_large,
+                        onboarding_data.food_preferences_middle,
+                        onboarding_data.restaurant_ratings,
+                        firebase_uid,
+                    ),
+                )
+
+                result = cursor.fetchone()
+                conn.commit()
+
+                return self._convert_to_response(result)
+
+        except Exception as e:
+            self._handle_exception("updating onboarding data", e)
+
     def _convert_to_response(self, row: dict) -> UserResponse:
         """데이터베이스 행을 응답 모델로 변환"""
         return UserResponse(
@@ -255,4 +343,24 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
             photo_url=row["photo_url"],
             created_at=row["created_at"].isoformat(),
             updated_at=row["updated_at"].isoformat(),
+            is_personalization_enabled=row.get("is_personalization_enabled"),
+            has_completed_onboarding=row.get("has_completed_onboarding"),
+            onboarding_completed_at=row["onboarding_completed_at"].isoformat()
+            if row.get("onboarding_completed_at")
+            else None,
+            location=row.get("location"),
+            location_method=row.get("location_method"),
+            user_lat=row.get("user_lat"),
+            user_lon=row.get("user_lon"),
+            birth_year=row.get("birth_year"),
+            gender=row.get("gender"),
+            dining_companions=row.get("dining_companions"),
+            regular_budget=row.get("regular_budget"),
+            special_budget=row.get("special_budget"),
+            spice_level=row.get("spice_level"),
+            allergies=row.get("allergies"),
+            dislikes=row.get("dislikes"),
+            food_preferences_large=row.get("food_preferences_large"),
+            food_preferences_middle=row.get("food_preferences_middle"),
+            restaurant_ratings=row.get("restaurant_ratings"),
         )

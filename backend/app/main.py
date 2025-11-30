@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import (
+    activity_logs,
     auth,
     items,
     kakao_diners,
@@ -85,6 +86,7 @@ app.add_middleware(
 # API 라우터 등록
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(activity_logs.router, prefix="/activity-logs", tags=["activity-logs"])
 app.include_router(items.router, prefix="/items", tags=["items"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 app.include_router(upload.router, prefix="/upload")
@@ -138,9 +140,17 @@ def get_info():
         "environment": settings.environment,
         "debug": settings.debug,
         "endpoints": {
+            "auth": "/auth",
             "users": "/users",
+            "activity_logs": "/activity-logs",
+            "items": "/items",
+            "reviews": "/reviews",
             "upload": "/upload",
-            "redis": "/api/v1/redis",
+            "kakao_diners": "/kakao/diners",
+            "kakao_reviews": "/kakao/reviews",
+            "kakao_reviewers": "/kakao/reviewers",
+            "vector_db": "/vector_db",
+            "redis": "/redis",
             "docs": "/docs",
             "health": "/health",
         },

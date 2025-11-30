@@ -43,6 +43,7 @@ def list_restaurants(
         le=1000,
         description="반환할 최대 레코드 수 (top-k), None이면 전체 반환",
     ),
+    offset: int | None = Query(None, ge=0, description="페이지네이션 오프셋"),
     diner_category_large: str | None = Query(None, description="대분류 카테고리"),
     diner_category_middle: str | None = Query(None, description="중분류 카테고리"),
     diner_category_small: str | None = Query(None, description="소분류 카테고리"),
@@ -87,6 +88,7 @@ def list_restaurants(
     """
     return diner_service.get_list(
         limit=limit,
+        offset=offset,
         diner_category_large=diner_category_large,
         diner_category_middle=diner_category_middle,
         diner_category_small=diner_category_small,
@@ -135,3 +137,39 @@ def delete_restaurant(
 ):
     """카카오 음식점 삭제"""
     return diner_service.delete(kakao_place_id, dry_run)
+
+
+@router.get(
+    "/categories/large",
+    response_model=list[dict],
+    tags=["kakao-restaurants"],
+    summary="대분류 카테고리 통계",
+)
+def get_large_category_statistics():
+    """
+    대분류 카테고리별 음식점 수 통계 조회
+
+    **Response:**
+    - name: 카테고리명
+    - count: 음식점 수
+    """
+    return diner_service.get_category_statistics("large")
+
+
+@router.get(
+    "/categories/middle",
+    response_model=list[dict],
+    tags=["kakao-restaurants"],
+    summary="중분류 카테고리 통계",
+)
+def get_middle_category_statistics(
+    large_category: str = Query(..., description="대분류 카테고리명")
+):
+    """
+    특정 대분류의 중분류 카테고리별 음식점 수 통계 조회
+
+    **Response:**
+    - name: 카테고리명
+    - count: 음식점 수
+    """
+    return diner_service.get_category_statistics("middle", large_category)

@@ -10,6 +10,28 @@ class Settings(BaseSettings):
 
     # Redis 설정
     redis_url: str = "redis://redis:6379"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def validate_database_url(cls, v):
+        """빈 문자열이거나 localhost인 경우 Docker 환경에 맞게 수정"""
+        if not v or v.strip() == "":
+            return "postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb"
+        # localhost를 postgres로 변경 (Docker Compose 환경)
+        if isinstance(v, str) and "localhost" in v and "postgres" not in v:
+            return v.replace("localhost", "postgres")
+        return v
+
+    @field_validator("redis_url", mode="before")
+    @classmethod
+    def validate_redis_url(cls, v):
+        """빈 문자열이거나 localhost인 경우 Docker 환경에 맞게 수정"""
+        if not v or v.strip() == "":
+            return "redis://redis:6379"
+        # localhost를 redis로 변경 (Docker Compose 환경)
+        if isinstance(v, str) and "localhost" in v and "redis" not in v:
+            return v.replace("localhost", "redis")
+        return v
     redis_max_batch_size: int = 1000  # 기본 배치 크기
 
     # FAISS 서버 설정

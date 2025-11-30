@@ -29,6 +29,51 @@ class KakaoDinerService(
     def __init__(self):
         super().__init__("kakao_diner", "diner_idx")
 
+    def get_category_statistics(
+        self, category_type: str, parent_category: str = None
+    ) -> list[dict]:
+        """
+        카테고리별 음식점 수 통계 조회
+
+        Args:
+            category_type: "large" 또는 "middle"
+            parent_category: 중분류 조회 시 대분류 카테고리명
+
+        Returns:
+            카테고리별 음식점 수 리스트
+        """
+        if category_type == "large":
+            query = """
+                SELECT diner_category_large as name, COUNT(*) as diner_count
+                FROM kakao_diner
+                WHERE diner_category_large IS NOT NULL
+                GROUP BY diner_category_large
+                ORDER BY diner_count DESC
+            """
+            results = self._execute_query_all(query, ())
+        elif category_type == "middle":
+            if not parent_category:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="parent_category is required for middle category statistics",
+                )
+            query = """
+                SELECT diner_category_middle as name, COUNT(*) as diner_count
+                FROM kakao_diner
+                WHERE diner_category_large = %s
+                  AND diner_category_middle IS NOT NULL
+                GROUP BY diner_category_middle
+                ORDER BY diner_count DESC
+            """
+            results = self._execute_query_all(query, (parent_category,))
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="category_type must be 'large' or 'middle'",
+            )
+
+        return [{"name": row["name"], "count": int(row["diner_count"])} for row in results]
+
     def _calculate_personalization_score(
         self, diner_idx_list: list[int], user_id: str | None = None
     ) -> pd.DataFrame:
@@ -175,6 +220,7 @@ class KakaoDinerService(
     def get_list(
         self,
         limit: int | None = None,
+        offset: int | None = None,
         diner_category_large: str | None = None,
         diner_category_middle: str | None = None,
         diner_category_small: str | None = None,
@@ -191,6 +237,7 @@ class KakaoDinerService(
 
         Args:
             limit: 반환할 최대 레코드 수 (top-k)
+            offset: 페이지네이션 오프셋 (None이면 0으로 처리)
             diner_category_large: 대분류 카테고리 필터 (기본 필터)
             diner_category_middle: 중분류 카테고리 필터 (기본 필터)
             diner_category_small: 소분류 카테고리 필터 (기본 필터)
@@ -326,7 +373,12 @@ class KakaoDinerService(
             # 기본값: 평점순
             df = df.sort_values(by=["diner_review_avg"], ascending=False)
 
-        # 4. top-k 적용 (limit이 None이면 전체 반환)
+        # 4. 페이지네이션 적용 (offset + limit)
+        # offset이 None이면 0으로 처리
+        offset_value = offset if offset is not None else 0
+        if offset_value > 0:
+            df = df.iloc[offset_value:]
+        
         if limit is not None:
             df = df.head(limit)
 

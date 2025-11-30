@@ -10,8 +10,8 @@ services:
       - "8000:8000"
     environment:
       # 데이터베이스 설정
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       FAISS_SERVER_URL: ${FAISS_SERVER_URL:-}
       
       # JWT 설정
@@ -26,7 +26,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       
       # CORS 설정
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:8501", "http://localhost:3000", "http://localhost"]}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:8501", "http://localhost:3000", "http://localhost", "http://127.0.0.1:8501"]}
       
       # Firebase 설정
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/firebase-key.json}
