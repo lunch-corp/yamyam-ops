@@ -5,6 +5,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
     container_name: yamyam-backend
     ports:
       - "8000:8000"
@@ -34,6 +36,15 @@ services:
       # Firebase 설정
       FIREBASE_KEY: ${FIREBASE_KEY:-}
 
+      # Remote JSON Load 설정
+      REMOTE_JSON_HOST: ${REMOTE_JSON_HOST}
+      REMOTE_JSON_PORT: ${REMOTE_JSON_PORT}
+      REMOTE_JSON_USER: ${REMOTE_JSON_USER}
+      REMOTE_JSON_PASS: ${REMOTE_JSON_PASS}
+      REMOTE_JSON_PATH: ${REMOTE_JSON_PATH}
+      REMOTE_N2V_WEIGHT_PATH: ${REMOTE_N2V_WEIGHT_PATH}
+      REMOTE_N2V_UTIL_PATH: ${REMOTE_N2V_UTIL_PATH}
+
       # 서버 설정
       WORKERS: ${WORKERS:-1}
     depends_on:
@@ -44,6 +55,7 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/app/data
+      - config_data:/app/config
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -85,3 +97,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  config_data:

@@ -65,7 +65,7 @@ FROM users ORDER BY created_at DESC LIMIT %s OFFSET %s
 
 UPDATE_USER_BY_ID = """
 UPDATE users SET
-    name = %s, email = %s, display_name = %s, photo_url = %s, 
+    name = %s, email = %s, display_name = %s, photo_url = %s, kakao_reviewer_id = %s,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = %s
 RETURNING id, firebase_uid, name, email, display_name, photo_url,
@@ -80,10 +80,12 @@ RETURNING id, firebase_uid, name, email, display_name, photo_url,
 """
 
 UPDATE_USER_BY_FIREBASE_UID = """
-UPDATE users 
-SET name = %s, email = %s, display_name = %s, 
-    photo_url = %s, updated_at = CURRENT_TIMESTAMP
+UPDATE users SET
+    name = %s, email = %s, display_name = %s, photo_url = %s, kakao_reviewer_id = %s,
+    updated_at = CURRENT_TIMESTAMP
 WHERE firebase_uid = %s
+RETURNING id, firebase_uid, name, email, display_name, photo_url, kakao_reviewer_id,
+          created_at, updated_at
 """
 
 DELETE_USER_BY_ID = """
@@ -96,8 +98,8 @@ SELECT COUNT(*) FROM users
 
 # Firebase 동기화 관련 쿼리
 INSERT_USER_FOR_SYNC = """
-INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url)
-VALUES (%s, %s, %s, %s, %s, %s)
+INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url, kakao_reviewer_id)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
 """
 
 INSERT_USER_FROM_FIREBASE = """

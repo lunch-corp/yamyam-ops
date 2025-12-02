@@ -11,6 +11,7 @@ from app.api.v1 import (
     kakao_diners,
     kakao_reviewers,
     kakao_reviews,
+    recommendation,
     redis,
     reviews,
     upload,
@@ -61,12 +62,10 @@ async def lifespan(app: FastAPI):
 
     # Redis 연결 확인
     try:
-        is_connected = await redis_db.ping()
-        if is_connected:
-            logger.info("Redis 연결 성공")
-            await redis_db.initialize_data()
-        else:
-            logger.warning("Redis 연결 실패 - Redis 기능이 제한될 수 있습니다")
+        client = await redis_db.get_client()
+        redis.redis_service.redis_client = client  # RedisService에 client 할당
+        await redis.redis_service.initialize_data()
+        logger.info("Redis 연결 및 초기화 완료")
     except Exception as e:
         logger.error(f"Redis 초기화 실패: {e}")
 
@@ -120,6 +119,7 @@ app.include_router(
 )
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
 app.include_router(redis.router, prefix="/redis", tags=["redis"])
+app.include_router(recommendation.router, prefix="/rec", tags=["recommendation"])
 
 
 @app.get("/")

@@ -1,7 +1,6 @@
-import logging
-
 from fastapi import APIRouter, Body, HTTPException, status
 
+from app.core.redis_db import redis_db
 from app.schemas.redis_schemas import (
     RedisCreateRequest,
     RedisDeleteRequest,
@@ -10,9 +9,10 @@ from app.schemas.redis_schemas import (
     RedisResponse,
     RedisUpdateRequest,
 )
-from app.services.redis_service import redis_service
+from app.services.redis_service import RedisService
 
 router = APIRouter()
+redis_service = RedisService(redis_client=None)
 
 
 @router.post(
@@ -31,25 +31,19 @@ async def create_redis_keys(request: RedisCreateRequest):
 
     Single key example: `{"items": {"1783192": {"diner_ids": ["57812123"]}}, "expire": 3600}`
     """
-    try:
-        results = await redis_service.create(items=request.items, expire=request.expire)
+    results = await redis_service.create(items=request.items, expire=request.expire)
 
-        succeeded = sum(1 for v in results.values() if v)
-        failed = len(results) - succeeded
+    succeeded = sum(1 for v in results.values() if v)
+    failed = len(results) - succeeded
 
-        return RedisResponse(
-            success=failed == 0,
-            message=f"Created {succeeded} key(s)"
-            if failed == 0
-            else f"Created {succeeded}/{len(results)} key(s)",
-            data=results,
-            stats={"total": len(results), "succeeded": succeeded, "failed": failed},
-        )
-    except Exception as e:
-        logging.error(f"Redis create endpoint error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    return RedisResponse(
+        success=failed == 0,
+        message=f"Created {succeeded} key(s)"
+        if failed == 0
+        else f"Created {succeeded}/{len(results)} key(s)",
+        data=results,
+        stats={"total": len(results), "succeeded": succeeded, "failed": failed},
+    )
 
 
 @router.post(
@@ -66,25 +60,19 @@ async def read_redis_keys(request: RedisReadRequest = Body(...)):
 
     Single key example: `{"keys": ["1783192"]}`
     """
-    try:
-        results = await redis_service.read(keys=request.keys)
+    results = await redis_service.read(keys=request.keys)
 
-        found = sum(1 for v in results.values() if v is not None)
-        not_found = len(results) - found
+    found = sum(1 for v in results.values() if v is not None)
+    not_found = len(results) - found
 
-        return RedisReadResponse(
-            success=True,
-            message=f"Read {found} key(s)"
-            if not_found == 0
-            else f"Read {found}/{len(results)} key(s)",
-            data=results,
-            stats={"total": len(results), "found": found, "not_found": not_found},
-        )
-    except Exception as e:
-        logging.error(f"Redis read endpoint error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    return RedisReadResponse(
+        success=True,
+        message=f"Read {found} key(s)"
+        if not_found == 0
+        else f"Read {found}/{len(results)} key(s)",
+        data=results,
+        stats={"total": len(results), "found": found, "not_found": not_found},
+    )
 
 
 @router.put(
@@ -102,25 +90,19 @@ async def update_redis_keys(request: RedisUpdateRequest):
 
     Single key example: `{"items": {"1783192": {"diner_ids": ["57812123"]}}, "expire": 7200}`
     """
-    try:
-        results = await redis_service.update(items=request.items, expire=request.expire)
+    results = await redis_service.update(items=request.items, expire=request.expire)
 
-        succeeded = sum(1 for v in results.values() if v)
-        failed = len(results) - succeeded
+    succeeded = sum(1 for v in results.values() if v)
+    failed = len(results) - succeeded
 
-        return RedisResponse(
-            success=failed == 0,
-            message=f"Updated {succeeded} key(s)"
-            if failed == 0
-            else f"Updated {succeeded}/{len(results)} key(s)",
-            data=results,
-            stats={"total": len(results), "succeeded": succeeded, "failed": failed},
-        )
-    except Exception as e:
-        logging.error(f"Redis update endpoint error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    return RedisResponse(
+        success=failed == 0,
+        message=f"Updated {succeeded} key(s)"
+        if failed == 0
+        else f"Updated {succeeded}/{len(results)} key(s)",
+        data=results,
+        stats={"total": len(results), "succeeded": succeeded, "failed": failed},
+    )
 
 
 @router.delete(
@@ -137,25 +119,19 @@ async def delete_redis_keys(request: RedisDeleteRequest = Body(...)):
 
     Single key example: `{"keys": ["1783192"]}`
     """
-    try:
-        results = await redis_service.delete(keys=request.keys)
+    results = await redis_service.delete(keys=request.keys)
 
-        succeeded = sum(1 for v in results.values() if v)
-        failed = len(results) - succeeded
+    succeeded = sum(1 for v in results.values() if v)
+    failed = len(results) - succeeded
 
-        return RedisResponse(
-            success=failed == 0,
-            message=f"Deleted {succeeded} key(s)"
-            if failed == 0
-            else f"Deleted {succeeded}/{len(results)} key(s)",
-            data=results,
-            stats={"total": len(results), "succeeded": succeeded, "failed": failed},
-        )
-    except Exception as e:
-        logging.error(f"Redis delete endpoint error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    return RedisResponse(
+        success=failed == 0,
+        message=f"Deleted {succeeded} key(s)"
+        if failed == 0
+        else f"Deleted {succeeded}/{len(results)} key(s)",
+        data=results,
+        stats={"total": len(results), "succeeded": succeeded, "failed": failed},
+    )
 
 
 @router.delete(
@@ -174,56 +150,47 @@ async def delete_redis_key(request: RedisDeleteRequest = Body(...)):
     **벌크 작업:**
     - **keys**: 삭제할 키 리스트
     """
-    try:
-        # 벌크 작업
-        if request.keys is not None:
-            results = await redis_service.bulk_delete(keys=request.keys)
-            succeeded = sum(1 for v in results.values() if v)
-            failed = len(results) - succeeded
+    # 벌크 작업
+    if request.keys is not None:
+        results = await redis_service.bulk_delete(keys=request.keys)
+        succeeded = sum(1 for v in results.values() if v)
+        failed = len(results) - succeeded
 
-            return RedisResponse(
-                success=failed == 0,
-                message="Bulk delete completed",
-                data=results,
-                is_bulk=True,
-                stats={"total": len(results), "succeeded": succeeded, "failed": failed},
-            )
+        return RedisResponse(
+            success=failed == 0,
+            message="Bulk delete completed",
+            data=results,
+            is_bulk=True,
+            stats={"total": len(results), "succeeded": succeeded, "failed": failed},
+        )
 
-        # 단일 작업
-        elif request.key is not None:
-            if not await redis_service.exists(request.key):
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Key '{request.key}' not found",
-                )
-
-            success = await redis_service.delete(request.key)
-
-            if not success:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to delete key",
-                )
-
-            return RedisResponse(
-                success=True,
-                message=f"Key '{request.key}' deleted successfully",
-                data={"key": request.key},
-                is_bulk=False,
-            )
-
-        else:
+    # 단일 작업
+    elif request.key is not None:
+        if not await redis_service.exists(request.key):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either 'key' OR 'keys' must be provided",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Key '{request.key}' not found",
             )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Redis delete endpoint error: {e}")
+        success = await redis_service.delete(request.key)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete key",
+            )
+
+        return RedisResponse(
+            success=True,
+            message=f"Key '{request.key}' deleted successfully",
+            data={"key": request.key},
+            is_bulk=False,
+        )
+
+    else:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either 'key' OR 'keys' must be provided",
         )
 
 
@@ -235,30 +202,18 @@ async def delete_redis_key(request: RedisDeleteRequest = Body(...)):
 )
 async def redis_health_check():
     """Check Redis connection status"""
-    try:
-        from app.core.redis_db import redis_db
 
-        is_connected = await redis_db.ping()
+    is_connected = await redis_db.ping()
 
-        if not is_connected:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Redis is not available",
-            )
-
-        return RedisResponse(
-            success=True,
-            message="Redis is healthy",
-            data={"status": "connected"},
-            is_bulk=False,
-        )
-    except Exception as e:
-        logging.error(f"Redis health check error: {e}")
+    if not is_connected:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis is not available",
         )
-    except Exception as e:
-        logging.error(f"Redis bulk update endpoint error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+
+    return RedisResponse(
+        success=True,
+        message="Redis is healthy",
+        data={"status": "connected"},
+        is_bulk=False,
+    )

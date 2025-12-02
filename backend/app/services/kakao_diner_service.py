@@ -140,6 +140,7 @@ class KakaoDinerService(
         radius_km: float | None = None,
         user_id: str | None = None,
         sort_by: str = "popularity",  # personalization, popularity, hidden_gem, rating, distance, review_count
+        use_dataframe: bool = False,
     ) -> list[KakaoDinerResponse]:
         """
         카카오 음식점 목록 조회 (필터링 및 정렬)
@@ -157,6 +158,7 @@ class KakaoDinerService(
             radius_km: 반경 (km) - 기본 필터
             user_id: 사용자 ID (개인화 정렬용)
             sort_by: 정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count 중 하나)
+            use_dataframe: pandas dataframe 사용 여부
 
         Returns:
             음식점 목록
@@ -276,8 +278,12 @@ class KakaoDinerService(
         if not results:
             return []
 
-        # 4. Response 모델로 변환 (DataFrame 변환 불필요)
-        return [self._convert_to_response(row) for row in results]
+        # 5. Response 모델로 변환
+        return (
+            [self._convert_to_response(row) for row in results]
+            if not use_dataframe
+            else results
+        )
 
     def update(self, diner_idx: int, data: KakaoDinerUpdate) -> KakaoDinerResponse:
         """카카오 음식점 정보 업데이트"""

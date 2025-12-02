@@ -2,6 +2,7 @@
 카카오 리뷰어 서비스
 """
 
+import pandas as pd
 from fastapi import HTTPException, status
 
 from app.core.db import db
@@ -70,6 +71,7 @@ class KakaoReviewerService(
         limit: int | None = None,
         min_review_count: int | None = None,
         is_verified: bool | None = None,
+        use_dataframe: bool = False,
     ) -> list[KakaoReviewerResponse]:
         """카카오 리뷰어 목록 조회"""
         # 필터링이나 페이지네이션이 필요한 경우 동적 쿼리 사용
@@ -119,7 +121,11 @@ class KakaoReviewerService(
                     GET_ALL_KAKAO_REVIEWERS_PAGINATED, (limit, skip)
                 )
 
-        return [self._convert_to_response(row) for row in results]
+        return (
+            [self._convert_to_response(row) for row in results]
+            if not use_dataframe
+            else pd.DataFrame(results)
+        )
 
     def update(
         self, reviewer_id: int, data: KakaoReviewerUpdate
@@ -167,7 +173,6 @@ class KakaoReviewerService(
         """데이터베이스 행을 응답 모델로 변환"""
         return KakaoReviewerResponse(
             id=row["id"],
-            kakao_user_id=row["kakao_user_id"],
             reviewer_id=row["reviewer_id"],
             reviewer_user_name=row.get("reviewer_user_name"),
             reviewer_review_cnt=row["reviewer_review_cnt"],

@@ -62,6 +62,9 @@ class Settings(BaseSettings):
 
     # 데이터베이스 마이그레이션 설정
     run_migrations: bool = True  # 기본값: True (마이그레이션 실행)
+    # config path
+    config_root_path: str = "/app/config/beta"
+    node2vec_config_path: str = "/app/config/beta/models/graph/node2vec.yaml"
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
