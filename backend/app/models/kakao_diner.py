@@ -27,6 +27,9 @@ class KakaoDiner(Base, ULIDMixin):
     diner_category_middle = Column(String(100))
     diner_category_small = Column(String(100))
     diner_category_detail = Column(String(100))
+    diner_grade = Column(Integer, nullable=False)
+    hidden_score = Column(Float, nullable=False)
+    bayesian_score = Column(Float, nullable=False)
     crawled_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

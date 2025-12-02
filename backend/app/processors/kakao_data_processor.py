@@ -183,6 +183,39 @@ class KakaoDataProcessor:
             ],
             "query_name": "INSERT_KAKAO_REVIEW",
         },
+        "diner_grade_bayesian": {
+            "required_columns": [
+                "diner_idx",
+                "diner_grade",
+                "bayesian_score",
+            ],
+            "field_mappings": [
+                ("diner_grade", "int"),
+                ("bayesian_score", "float"),
+                ("diner_idx", "int"),
+            ],
+            "sql_fields": [
+                "diner_grade",
+                "bayesian_score",
+                "diner_idx",
+            ],
+            "query_name": "UPDATE_KAKAO_DINER_GRADE_BAYESIAN",
+        },
+        "diner_hidden_score": {
+            "required_columns": [
+                "diner_idx",
+                "hidden_score",
+            ],
+            "field_mappings": [
+                ("hidden_score", "float"),
+                ("diner_idx", "int"),
+            ],
+            "sql_fields": [
+                "hidden_score",
+                "diner_idx",
+            ],
+            "query_name": "UPDATE_KAKAO_DINER_HIDDEN_SCORE",
+        },
     }
 
     # 데이터 타입 변환 함수들

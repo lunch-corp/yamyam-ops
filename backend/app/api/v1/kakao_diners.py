@@ -163,7 +163,7 @@ def get_large_category_statistics():
     summary="중분류 카테고리 통계",
 )
 def get_middle_category_statistics(
-    large_category: str = Query(..., description="대분류 카테고리명")
+    large_category: str = Query(..., description="대분류 카테고리명"),
 ):
     """
     특정 대분류의 중분류 카테고리별 음식점 수 통계 조회

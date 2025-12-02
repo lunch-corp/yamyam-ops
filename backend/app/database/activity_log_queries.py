@@ -98,7 +98,7 @@ LIMIT %s OFFSET %s
 
 # ML 학습용 데이터 추출 쿼리
 GET_LOGS_FOR_ML = """
-SELECT 
+SELECT
     user_id,
     firebase_uid,
     session_id,
@@ -131,7 +131,7 @@ ORDER BY count DESC
 """
 
 GET_TOP_CLICKED_DINERS = """
-SELECT 
+SELECT
     clicked_diner_idx,
     clicked_diner_name,
     COUNT(*) as click_count
@@ -146,7 +146,7 @@ LIMIT %s
 """
 
 GET_USER_PREFERRED_CATEGORIES = """
-SELECT 
+SELECT
     firebase_uid,
     UNNEST(selected_large_categories) as category,
     COUNT(*) as selection_count
@@ -156,4 +156,3 @@ WHERE firebase_uid = %s
 GROUP BY firebase_uid, category
 ORDER BY selection_count DESC
 """
-

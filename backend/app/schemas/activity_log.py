@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -23,15 +23,15 @@ class ActivityLogCreate(BaseModel):
 
     # Search filter related
     search_radius_km: Optional[float] = None
-    selected_large_categories: Optional[List[str]] = None
-    selected_middle_categories: Optional[List[str]] = None
+    selected_large_categories: Optional[list[str]] = None
+    selected_middle_categories: Optional[list[str]] = None
     sort_by: Optional[str] = Field(None, max_length=50)
     period: Optional[str] = Field(None, max_length=20)
 
     # Ranking page related
     selected_city: Optional[str] = Field(None, max_length=100)
     selected_region: Optional[str] = Field(None, max_length=100)
-    selected_grades: Optional[List[str]] = None
+    selected_grades: Optional[list[str]] = None
 
     # Click/Interaction related
     clicked_diner_idx: Optional[str] = Field(None, max_length=50)
@@ -39,7 +39,7 @@ class ActivityLogCreate(BaseModel):
     display_position: Optional[int] = None
 
     # Additional metadata
-    additional_data: Optional[Dict[str, Any]] = None
+    additional_data: Optional[dict[str, Any]] = None
     user_agent: Optional[str] = None
     ip_address: Optional[str] = Field(None, max_length=45)
 
@@ -64,15 +64,15 @@ class ActivityLogResponse(BaseModel):
 
     # Search filter related
     search_radius_km: Optional[float] = None
-    selected_large_categories: Optional[List[str]] = None
-    selected_middle_categories: Optional[List[str]] = None
+    selected_large_categories: Optional[list[str]] = None
+    selected_middle_categories: Optional[list[str]] = None
     sort_by: Optional[str] = None
     period: Optional[str] = None
 
     # Ranking page related
     selected_city: Optional[str] = None
     selected_region: Optional[str] = None
-    selected_grades: Optional[List[str]] = None
+    selected_grades: Optional[list[str]] = None
 
     # Click/Interaction related
     clicked_diner_idx: Optional[str] = None
@@ -80,7 +80,7 @@ class ActivityLogResponse(BaseModel):
     display_position: Optional[int] = None
 
     # Additional metadata
-    additional_data: Optional[Dict[str, Any]] = None
+    additional_data: Optional[dict[str, Any]] = None
     user_agent: Optional[str] = None
     ip_address: Optional[str] = None
 
@@ -101,6 +101,5 @@ class ActivityLogExport(BaseModel):
 
     start_date: Optional[str] = None
     end_date: Optional[str] = None
-    event_types: Optional[List[str]] = None
+    event_types: Optional[list[str]] = None
     format: str = Field("json", pattern="^(json|csv)$")
-

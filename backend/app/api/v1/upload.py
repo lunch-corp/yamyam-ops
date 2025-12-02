@@ -212,3 +212,50 @@ async def upload_reviews(
     dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
     """
     return await upload_service.upload_reviews(file, dry_run)
+
+
+@router.post(
+    "/kakao/restaurants/grade-bayesian",
+    tags=["uploads"],
+    summary="음식점 등급 및 베이지안 점수 업로드",
+)
+async def upload_restaurant_grade_bayesian(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> dict:
+    """
+    카카오 음식점 등급 및 베이지안 점수 업로드
+
+    diner_grade_bayesian.csv 파일을 업로드하여 음식점 등급과 베이지안 점수를 업데이트합니다.
+
+    **필수 컬럼:**
+    - diner_idx: 음식점 고유 인덱스 (int)
+    - diner_grade: 음식점 등급 (int)
+    - bayesian_score: 베이지안 평균 점수 (float)
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_diner_grade_bayesian(file, dry_run)
+
+
+@router.post(
+    "/kakao/restaurants/hidden-score",
+    tags=["uploads"],
+    summary="음식점 숨찐맛 점수 업로드",
+)
+async def upload_restaurant_hidden_score(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> dict:
+    """
+    카카오 음식점 숨찐맛 점수 업로드
+
+    diner_hidden_score.csv 파일을 업로드하여 음식점 숨찐맛 점수를 업데이트합니다.
+
+    **필수 컬럼:**
+    - diner_idx: 음식점 고유 인덱스 (int)
+    - hidden_score: 숨찐맛 점수 (float)
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_diner_hidden_score(file, dry_run)

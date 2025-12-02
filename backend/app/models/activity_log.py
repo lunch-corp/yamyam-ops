@@ -1,4 +1,4 @@
-from sqlalchemy import ARRAY, Column, Float, Integer, String, Text, TIMESTAMP
+from sqlalchemy import ARRAY, TIMESTAMP, Column, Float, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
@@ -52,4 +52,3 @@ class UserActivityLog(Base, ULIDMixin):
     additional_data = Column(JSONB)
     user_agent = Column(Text)
     ip_address = Column(String(45))
-

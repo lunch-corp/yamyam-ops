@@ -2,7 +2,6 @@
 카카오 음식점 서비스
 """
 
-import pandas as pd
 from fastapi import HTTPException, status
 
 from app.core.db import db
@@ -72,102 +71,9 @@ class KakaoDinerService(
                 detail="category_type must be 'large' or 'middle'",
             )
 
-        return [{"name": row["name"], "count": int(row["diner_count"])} for row in results]
-
-    def _calculate_personalization_score(
-        self, diner_idx_list: list[int], user_id: str | None = None
-    ) -> pd.DataFrame:
-        """
-        개인화 점수 계산 (미구현)
-
-        Args:
-            diner_idx_list: 음식점 인덱스 리스트
-            user_id: 사용자 ID (Optional)
-
-        Returns:
-            DataFrame with columns: diner_idx, score(personalization_score)
-        """
-        # TODO: 개인화 로직 구현
-        pass
-        return pd.DataFrame(columns=["diner_idx", "score"])
-
-    def _calculate_popularity_score(self, diner_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        인기도 점수 계산 (미구현)
-
-        Args:
-            diner_df: 음식점 DataFrame
-
-        Returns:
-            DataFrame with columns: diner_idx, score(popularity_score)
-        """
-        # TODO: 인기도 로직 구현 (리뷰수, 평점 등 종합)
-        pass
-        return pd.DataFrame(columns=["diner_idx", "score"])
-
-    def _calculate_hidden_gem_score(self, diner_idx_list: list[int]) -> pd.DataFrame:
-        """
-        숨찐맛 점수 계산 (미구현)
-
-        Args:
-            diner_idx_list: 음식점 인덱스 리스트
-
-        Returns:
-            DataFrame with columns: diner_idx, score(hidden_gem_score)
-        """
-        # TODO: 숨찐맛 로직 구현
-        pass
-        return pd.DataFrame(columns=["diner_idx", "score"])
-
-    def _calculate_bayesian_score(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        베이지안 평균 점수 계산
-
-        Args:
-            df: 음식점 DataFrame (diner_review_avg, diner_review_cnt 포함)
-
-        Returns:
-            DataFrame with bayesian_score column added
-        """
-        # 전체 평균 평점과 평균 리뷰수 계산
-        C = df["diner_review_avg"].mean()  # 전체 평균 평점
-        m = df["diner_review_cnt"].astype(float).mean()  # 평균 리뷰수
-
-        # 베이지안 평균 계산: (v/(v+m)) * R + (m/(v+m)) * C
-        # v: 해당 음식점의 리뷰수, R: 해당 음식점의 평점, m: 평균 리뷰수, C: 전체 평균 평점
-        df["bayesian_score"] = (
-            df["diner_review_cnt"].astype(float)
-            / (df["diner_review_cnt"].astype(float) + m)
-        ) * df["diner_review_avg"] + (
-            m / (df["diner_review_cnt"].astype(float) + m)
-        ) * C
-
-        return df
-
-    def _sort_by_score_or_bayesian(
-        self, df: pd.DataFrame, score_df: pd.DataFrame, score_column: str = "score"
-    ) -> pd.DataFrame:
-        """
-        점수 DataFrame이 있으면 해당 점수로 정렬, 없으면 bayesian_score로 정렬
-
-        Args:
-            df: 원본 DataFrame
-            score_df: 점수 DataFrame (diner_idx, score 컬럼 포함)
-            score_column: 정렬에 사용할 점수 컬럼명
-
-        Returns:
-            정렬된 DataFrame
-        """
-        if not score_df.empty:
-            df = df.merge(score_df, on="diner_idx", how="left")
-            df[score_column] = df[score_column].fillna(0)
-            df = df.sort_values(by=[score_column], ascending=False)
-        else:
-            # 점수가 없으면 bayesian_score로 정렬
-            df = self._calculate_bayesian_score(df)
-            df = df.sort_values(by=["bayesian_score"], ascending=False)
-
-        return df
+        return [
+            {"name": row["name"], "count": int(row["diner_count"])} for row in results
+        ]
 
     def create(self, data: KakaoDinerCreate) -> KakaoDinerResponse:
         """카카오 음식점 생성"""
@@ -193,6 +99,9 @@ class KakaoDinerService(
                         data.diner_lat,
                         data.diner_lon,
                         None,  # diner_open_time (optional)
+                        data.diner_grade,  # diner_grade (optional)
+                        data.hidden_score,  # hidden_score (optional)
+                        data.bayesian_score,  # bayesian_score (optional)
                     ),
                 )
 
@@ -230,7 +139,7 @@ class KakaoDinerService(
         user_lon: float | None = None,
         radius_km: float | None = None,
         user_id: str | None = None,
-        sort_by: str = "rating",  # personalization, popularity, hidden_gem, rating, distance, review_count
+        sort_by: str = "popularity",  # personalization, popularity, hidden_gem, rating, distance, review_count
     ) -> list[KakaoDinerResponse]:
         """
         카카오 음식점 목록 조회 (필터링 및 정렬)
@@ -274,116 +183,101 @@ class KakaoDinerService(
             "diner_category_middle",
             "diner_category_small",
             "diner_category_detail",
+            "diner_grade",
+            "hidden_score",
+            "bayesian_score",
             "crawled_at",
             "updated_at",
         ]
 
-        # 거리 계산 추가 (지역 필터가 있는 경우)
+        # 거리 계산이 필요한 경우 (distance 정렬 또는 거리 필터)
         if user_lat is not None and user_lon is not None:
             fields.insert(
                 0,
-                f"ST_Distance(ST_MakePoint(diner_lon, diner_lat)::geography, ST_MakePoint({user_lon}, {user_lat})::geography) / 1000 AS distance_km",
+                f"ST_Distance(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, "
+                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography) / 1000 AS distance_km",
             )
 
         conditions = []
         params = []
 
-        # 카테고리 필터
+        # 카테고리 필터 (정확한 매칭으로 인덱스 활용)
         if diner_category_large:
-            conditions.append("diner_category_large LIKE %s")
-            params.append(f"%{diner_category_large}%")
+            conditions.append("diner_category_large = %s")
+            params.append(diner_category_large)
         if diner_category_middle:
-            conditions.append("diner_category_middle LIKE %s")
-            params.append(f"%{diner_category_middle}%")
+            conditions.append("diner_category_middle = %s")
+            params.append(diner_category_middle)
         if diner_category_small:
-            conditions.append("diner_category_small LIKE %s")
-            params.append(f"%{diner_category_small}%")
+            conditions.append("diner_category_small = %s")
+            params.append(diner_category_small)
         if diner_category_detail:
-            conditions.append("diner_category_detail LIKE %s")
-            params.append(f"%{diner_category_detail}%")
+            conditions.append("diner_category_detail = %s")
+            params.append(diner_category_detail)
 
         # 평점 필터
         if min_rating is not None:
             conditions.append("diner_review_avg >= %s")
             params.append(min_rating)
 
-        # 지역 필터 (ST_DWithin)
+        # 지역 필터 (ST_DWithin with geography - 정확한 미터 단위)
         if user_lat is not None and user_lon is not None and radius_km is not None:
             conditions.append(
-                f"ST_DWithin(ST_MakePoint(diner_lon, diner_lat)::geography, "
-                f"ST_MakePoint({user_lon}, {user_lat})::geography, {radius_km * 1000})"
+                f"ST_DWithin(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, "
+                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography, {radius_km * 1000})"
             )
 
-        # 쿼리 빌드 (정렬 없이, limit도 나중에 적용)
+        # 2. ORDER BY 구성 (SQL에서 정렬)
+        order_by_clause = None
+
+        if sort_by == "personalization":
+            # 개인화는 아직 미구현이므로 bayesian_score로 대체
+            order_by_clause = "bayesian_score DESC"
+
+        elif sort_by == "popularity":
+            # 인기도 = bayesian_score
+            order_by_clause = "bayesian_score DESC"
+
+        elif sort_by == "hidden_gem":
+            # 숨찐맛 = hidden_score
+            order_by_clause = "hidden_score DESC"
+
+        elif sort_by == "rating":
+            # 평점순
+            order_by_clause = "diner_review_avg DESC"
+
+        elif sort_by == "review_count":
+            # 리뷰수순 (문자열이므로 숫자로 변환하여 정렬)
+            order_by_clause = "CAST(diner_review_cnt AS INTEGER) DESC"
+
+        elif sort_by == "distance":
+            # 거리순 (거리 계산이 있는 경우만)
+            if user_lat is not None and user_lon is not None:
+                order_by_clause = "distance_km ASC"
+            else:
+                order_by_clause = "diner_review_avg DESC"  # 대체
+
+        else:
+            # 기본값: 평점순
+            order_by_clause = "diner_review_avg DESC"
+
+        # 3. 쿼리 빌드 (SQL에서 정렬 및 limit/offset 적용)
         query, query_params = self._build_select_query(
             fields,
             conditions,
-            order_by=None,  # Python에서 정렬
-            limit=None,
-            offset=None,
+            order_by=order_by_clause,  # SQL에서 정렬
+            limit=limit,
+            offset=offset if offset is not None else 0,
         )
 
         params.extend(query_params)
         results = self._execute_query_all(query, tuple(params))
 
         if not results:
-            # TODO: 필터 후 없을 경우 대책
             return []
 
-        # 2. 결과를 DataFrame으로 변환
-        df = pd.DataFrame(results)
-
-        # 3. 정렬 기준에 따라 필요한 점수만 계산
-        diner_idx_list = df["diner_idx"].tolist()
-
-        if sort_by == "personalization":
-            # 개인화 점수 계산 및 정렬
-            personalization_df = self._calculate_personalization_score(
-                diner_idx_list, user_id
-            )
-            df = self._sort_by_score_or_bayesian(df, personalization_df)
-
-        elif sort_by == "popularity":
-            # 인기도 점수 계산 및 정렬
-            popularity_df = self._calculate_popularity_score(df)
-            df = self._sort_by_score_or_bayesian(df, popularity_df)
-
-        elif sort_by == "hidden_gem":
-            # 숨찐맛 점수 계산 및 정렬
-            hidden_gem_df = self._calculate_hidden_gem_score(diner_idx_list)
-            df = self._sort_by_score_or_bayesian(df, hidden_gem_df)
-
-        elif sort_by == "rating":
-            # 평점순 정렬
-            df = df.sort_values(by=["diner_review_avg"], ascending=False)
-
-        elif sort_by == "review_count":
-            # 리뷰수순 정렬
-            df = df.sort_values(by=["diner_review_cnt"], ascending=False)
-
-        elif sort_by == "distance":
-            # 거리순 정렬 (거리 정보가 있는 경우만)
-            if "distance_km" in df.columns:
-                df = df.sort_values(by=["distance_km"], ascending=True)
-            else:
-                # 거리 정보가 없으면 평점순으로 대체
-                df = df.sort_values(by=["diner_review_avg"], ascending=False)
-
-        else:
-            # 기본값: 평점순
-            df = df.sort_values(by=["diner_review_avg"], ascending=False)
-
-        # 4. 페이지네이션 적용 (offset + limit)
-        # offset이 None이면 0으로 처리
-        offset_value = offset if offset is not None else 0
-        if offset_value > 0:
-            df = df.iloc[offset_value:]
-        
-        if limit is not None:
-            df = df.head(limit)
-
-        # 5. Response 모델로 변환
-        return [self._convert_to_response(row.to_dict()) for _, row in df.iterrows()]
+        # 4. Response 모델로 변환 (DataFrame 변환 불필요)
+        return [self._convert_to_response(row) for row in results]
 
     def update(self, diner_idx: int, data: KakaoDinerUpdate) -> KakaoDinerResponse:
         """카카오 음식점 정보 업데이트"""
@@ -394,30 +288,26 @@ class KakaoDinerService(
                 detail="Kakao diner not found",
             )
 
-        # 업데이트할 필드와 값 구성
-        update_values = []
-        field_mapping = {
-            "diner_name": data.diner_name,
-            "diner_tag": data.diner_tag,
-            "diner_menu_name": data.diner_menu_name,
-            "diner_menu_price": data.diner_menu_price,
-            "diner_review_cnt": data.diner_review_cnt,
-            "diner_review_avg": data.diner_review_avg,
-            "diner_blog_review_cnt": data.diner_blog_review_cnt,
-            "diner_review_tags": data.diner_review_tags,
-            "diner_road_address": data.diner_road_address,
-            "diner_num_address": data.diner_num_address,
-            "diner_phone": data.diner_phone,
-            "diner_lat": data.diner_lat,
-            "diner_lon": data.diner_lon,
-        }
-
-        for field, value in field_mapping.items():
-            if value is not None:
-                update_values.append(value)
-
-        # diner_idx를 마지막에 추가
-        update_values.append(diner_idx)
+        # 업데이트할 필드와 값 구성 (쿼리 순서대로)
+        update_values = [
+            data.diner_name,
+            data.diner_tag,
+            data.diner_menu_name,
+            data.diner_menu_price,
+            data.diner_review_cnt,
+            data.diner_review_avg,
+            data.diner_blog_review_cnt,
+            data.diner_review_tags,
+            data.diner_road_address,
+            data.diner_num_address,
+            data.diner_phone,
+            data.diner_lat,
+            data.diner_lon,
+            data.diner_grade,
+            data.hidden_score,
+            data.bayesian_score,
+            diner_idx,  # WHERE 조건
+        ]
 
         result = self._execute_query(UPDATE_KAKAO_DINER_BY_IDX, tuple(update_values))
         return self._convert_to_response(result)
@@ -455,6 +345,9 @@ class KakaoDinerService(
             diner_category_middle=row.get("diner_category_middle"),
             diner_category_small=row.get("diner_category_small"),
             diner_category_detail=row.get("diner_category_detail"),
+            diner_grade=row.get("diner_grade"),
+            hidden_score=row.get("hidden_score"),
+            bayesian_score=row.get("bayesian_score"),
             crawled_at=row["crawled_at"].isoformat(),
             updated_at=row["updated_at"].isoformat(),
         )

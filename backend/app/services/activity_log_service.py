@@ -5,7 +5,7 @@
 import csv
 import io
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from fastapi import HTTPException, status
 
@@ -15,7 +15,6 @@ from app.database.activity_log_queries import (
     GET_ACTIVITY_LOGS_BY_FIREBASE_UID,
     GET_ACTIVITY_LOGS_BY_SESSION,
     GET_ACTIVITY_LOGS_BY_TYPE,
-    GET_ACTIVITY_LOGS_BY_USER,
     GET_ACTIVITY_LOGS_WITH_FILTER,
     GET_LOGS_FOR_ML,
     GET_TOP_CLICKED_DINERS,
@@ -32,14 +31,18 @@ from app.schemas.activity_log import (
 from app.services.base_service import BaseService
 
 
-class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], ActivityLogResponse]):
+class ActivityLogService(
+    BaseService[ActivityLogCreate, dict[str, Any], ActivityLogResponse]
+):
     """활동 로그 서비스"""
 
     def __init__(self):
         super().__init__("user_activity_logs", "id")
 
     # BaseService의 추상 메서드 구현
-    def create(self, data: ActivityLogCreate, dry_run: bool = False) -> ActivityLogResponse:
+    def create(
+        self, data: ActivityLogCreate, dry_run: bool = False
+    ) -> ActivityLogResponse:
         """레코드 생성 (BaseService 추상 메서드)"""
         if dry_run:
             log_id = self._generate_ulid()
@@ -76,15 +79,17 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
     def get_by_id(self, id_value: str, dry_run: bool = False) -> ActivityLogResponse:
         """ID로 레코드 조회 (BaseService 추상 메서드)"""
         try:
-            query = f"SELECT * FROM {self.table_name} WHERE {self.primary_key_field} = %s"
+            query = (
+                f"SELECT * FROM {self.table_name} WHERE {self.primary_key_field} = %s"
+            )
             result = self._execute_query(query, (id_value,), dry_run)
-            
+
             if not result:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="활동 로그를 찾을 수 없습니다.",
                 )
-            
+
             return self._convert_to_response(result)
         except HTTPException:
             raise
@@ -93,7 +98,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
     def get_list(
         self, skip: int = 0, limit: int = 100, dry_run: bool = False, **filters
-    ) -> List[ActivityLogResponse]:
+    ) -> list[ActivityLogResponse]:
         """레코드 목록 조회 (BaseService 추상 메서드)"""
         try:
             query = f"SELECT * FROM {self.table_name}"
@@ -104,11 +109,11 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
             if filters.get("firebase_uid"):
                 conditions.append("firebase_uid = %s")
                 params.append(filters["firebase_uid"])
-            
+
             if filters.get("event_type"):
                 conditions.append("event_type = %s")
                 params.append(filters["event_type"])
-            
+
             if filters.get("session_id"):
                 conditions.append("session_id = %s")
                 params.append(filters["session_id"])
@@ -126,7 +131,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
             self._handle_exception("getting activity log list", e)
 
     def update(
-        self, id_value: str, data: Dict[str, Any], dry_run: bool = False
+        self, id_value: str, data: dict[str, Any], dry_run: bool = False
     ) -> ActivityLogResponse:
         """레코드 업데이트 (BaseService 추상 메서드)"""
         try:
@@ -170,7 +175,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
             # user_activity_logs 테이블에는 updated_at 컬럼이 없으므로 직접 쿼리 작성
             query = f"""
-                UPDATE {self.table_name} 
+                UPDATE {self.table_name}
                 SET {", ".join(update_fields)}
                 WHERE {self.primary_key_field} = %s
                 RETURNING *
@@ -190,11 +195,13 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
         except Exception as e:
             self._handle_exception("updating activity log", e)
 
-    def delete(self, id_value: str, dry_run: bool = False) -> Dict[str, str]:
+    def delete(self, id_value: str, dry_run: bool = False) -> dict[str, str]:
         """레코드 삭제 (BaseService 추상 메서드)"""
         try:
             # 먼저 존재 여부 확인
-            check_query = f"SELECT 1 FROM {self.table_name} WHERE {self.primary_key_field} = %s"
+            check_query = (
+                f"SELECT 1 FROM {self.table_name} WHERE {self.primary_key_field} = %s"
+            )
             if not self._check_exists(check_query, (id_value,), dry_run):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -203,7 +210,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
             # 삭제 실행
             delete_query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_field} = %s RETURNING {self.primary_key_field}"
-            result = self._execute_query(delete_query, (id_value,), dry_run)
+            self._execute_query(delete_query, (id_value,), dry_run)
 
             if dry_run:
                 return {"message": "Dry run: would delete activity log", "id": id_value}
@@ -275,21 +282,21 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
     def get_user_logs(
         self, firebase_uid: str, limit: int = 100, offset: int = 0
-    ) -> List[ActivityLogResponse]:
+    ) -> list[ActivityLogResponse]:
         """사용자별 로그 조회"""
         results = self._execute_query_all(
             GET_ACTIVITY_LOGS_BY_FIREBASE_UID, (firebase_uid, limit, offset)
         )
         return [self._convert_to_response(row) for row in results]
 
-    def get_session_logs(self, session_id: str) -> List[ActivityLogResponse]:
+    def get_session_logs(self, session_id: str) -> list[ActivityLogResponse]:
         """세션별 로그 조회"""
         results = self._execute_query_all(GET_ACTIVITY_LOGS_BY_SESSION, (session_id,))
         return [self._convert_to_response(row) for row in results]
 
     def get_logs_by_type(
         self, event_type: str, limit: int = 100, offset: int = 0
-    ) -> List[ActivityLogResponse]:
+    ) -> list[ActivityLogResponse]:
         """이벤트 타입별 로그 조회"""
         results = self._execute_query_all(
             GET_ACTIVITY_LOGS_BY_TYPE, (event_type, limit, offset)
@@ -298,7 +305,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
     def get_logs_with_filter(
         self, firebase_uid: str, filter_params: ActivityLogFilter
-    ) -> List[ActivityLogResponse]:
+    ) -> list[ActivityLogResponse]:
         """필터를 적용한 로그 조회"""
         results = self._execute_query_all(
             GET_ACTIVITY_LOGS_WITH_FILTER,
@@ -318,9 +325,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
         )
         return [self._convert_to_response(row) for row in results]
 
-    def export_logs_for_ml(
-        self, export_params: ActivityLogExport
-    ) -> Dict[str, Any]:
+    def export_logs_for_ml(self, export_params: ActivityLogExport) -> dict[str, Any]:
         """ML 학습용 데이터 추출"""
         try:
             results = self._execute_query_all(
@@ -345,7 +350,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
     def get_statistics(
         self, start_date: Optional[str] = None, end_date: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """로그 통계 조회"""
         try:
             # 기본 날짜 설정
@@ -373,7 +378,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
         except Exception as e:
             self._handle_exception("getting statistics", e)
 
-    def get_user_preferences(self, firebase_uid: str) -> Dict[str, Any]:
+    def get_user_preferences(self, firebase_uid: str) -> dict[str, Any]:
         """사용자 선호도 분석"""
         try:
             categories = self._execute_query_all(
@@ -419,7 +424,7 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
             ip_address=row.get("ip_address"),
         )
 
-    def _convert_to_csv(self, results: List[dict]) -> Dict[str, Any]:
+    def _convert_to_csv(self, results: list[dict]) -> dict[str, Any]:
         """결과를 CSV 형식으로 변환"""
         if not results:
             return {"data": "", "count": 0}
@@ -434,4 +439,3 @@ class ActivityLogService(BaseService[ActivityLogCreate, Dict[str, Any], Activity
 
 # 서비스 인스턴스
 activity_log_service = ActivityLogService()
-

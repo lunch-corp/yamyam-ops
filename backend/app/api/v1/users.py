@@ -81,7 +81,7 @@ def sync_user_with_firebase(firebase_uid: str = Depends(get_firebase_uid)):
 def sync_user_from_firebase(firebase_uid: str = Depends(get_firebase_uid)):
     """
     Firebase 회원가입 직후 PostgreSQL에 사용자 생성
-    
+
     - What2Eat에서 회원가입 성공 후 호출
     - Firebase ID Token으로 인증
     - 이미 존재하는 경우 기존 사용자 반환
@@ -115,7 +115,7 @@ def save_onboarding_data(
 ):
     """
     온보딩 완료 시 사용자 프로필 데이터 저장
-    
+
     - What2Eat에서 온보딩 완료 후 호출
     - Firebase ID Token으로 인증
     - 온보딩 데이터 및 평가 데이터 저장

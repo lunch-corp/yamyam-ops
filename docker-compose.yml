@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: yamyam-backend
@@ -10,27 +10,30 @@ services:
       - "8000:8000"
     environment:
       # 데이터베이스 설정
-      DATABASE_URL: ${DATABASE_URL:-postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       FAISS_SERVER_URL: ${FAISS_SERVER_URL:-}
-      
+
       # JWT 설정
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      
+
       # 환경 설정
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-True}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      
+
+      # Alembic 마이그레이션 설정
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+
       # CORS 설정
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:8501", "http://localhost:3000", "http://localhost", "http://127.0.0.1:8501"]}
-      
+
       # Firebase 설정
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/firebase-key.json}
-      
+      FIREBASE_KEY: ${FIREBASE_KEY:-}
+
       # 서버 설정
       WORKERS: ${WORKERS:-1}
     depends_on:
@@ -40,7 +43,6 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-      - ./backend/firebase-service-account-key.json:/app/firebase-key.json
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:

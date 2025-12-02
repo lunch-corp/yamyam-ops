@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         if isinstance(v, str) and "localhost" in v and "redis" not in v:
             return v.replace("localhost", "redis")
         return v
+
     redis_max_batch_size: int = 1000  # 기본 배치 크기
 
     # FAISS 서버 설정
@@ -43,9 +44,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15  # 15분
     refresh_token_expire_days: int = 7  # 7일
 
-    # Firebase 설정 (파일 경로 또는 JSON 문자열)
-    # GOOGLE_APPLICATION_CREDENTIALS 환경 변수로 파일 경로 지정 (권장)
-    # 또는 FIREBASE_KEY 환경 변수로 JSON 문자열 전달
+    # Firebase 설정
+    # FIREBASE_KEY 환경 변수로 Firebase 서비스 계정 JSON 문자열 전달
     firebase_key: str | None = None
 
     # CORS 설정
@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
     log_level: str = "INFO"
+
+    # 데이터베이스 마이그레이션 설정
+    run_migrations: bool = True  # 기본값: True (마이그레이션 실행)
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

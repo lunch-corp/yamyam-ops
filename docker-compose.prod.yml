@@ -24,11 +24,13 @@ services:
       DEBUG: ${DEBUG:-False}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
+      # Alembic 마이그레이션 설정
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+
       # CORS 설정
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["https://what2eat.streamlit.app"]}
 
-      # Firebase 설정 (파일 경로 방식 우선, 환경 변수 방식도 지원)
-      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/firebase-key.json
+      # Firebase 설정
       FIREBASE_KEY: ${FIREBASE_KEY:-}
       WORKERS: ${WORKERS:-1}
 

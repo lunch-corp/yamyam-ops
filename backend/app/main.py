@@ -32,6 +32,25 @@ async def lifespan(app: FastAPI):
     # 시작 시 실행
     logger.info("yamyam API 서버 시작")
 
+    # 데이터베이스 마이그레이션 실행 (옵션)
+    if settings.run_migrations:
+        try:
+            from app.core.migrations import run_migrations
+
+            logger.info("데이터베이스 마이그레이션 실행 중...")
+            run_migrations()
+            logger.info("데이터베이스 마이그레이션 완료")
+        except Exception as e:
+            logger.error(f"마이그레이션 실행 중 오류 발생: {e}")
+            import traceback
+
+            logger.error(f"마이그레이션 오류 상세: {traceback.format_exc()}")
+            logger.warning("마이그레이션 실패했지만 서버는 계속 실행합니다.")
+    else:
+        logger.info(
+            "데이터베이스 마이그레이션이 비활성화되어 있습니다. (RUN_MIGRATIONS=false)"
+        )
+
     # 데이터베이스 테이블 생성
     try:
         db.create_tables()
@@ -86,7 +105,9 @@ app.add_middleware(
 # API 라우터 등록
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(activity_logs.router, prefix="/activity-logs", tags=["activity-logs"])
+app.include_router(
+    activity_logs.router, prefix="/activity-logs", tags=["activity-logs"]
+)
 app.include_router(items.router, prefix="/items", tags=["items"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 app.include_router(upload.router, prefix="/upload")
@@ -98,7 +119,7 @@ app.include_router(
     kakao_reviewers.router, prefix="/kakao/reviewers", tags=["kakao-reviewers"]
 )
 app.include_router(vector_db.router, prefix="/vector_db", tags=["vector-db"])
-app.include_router(redis.router, prefix="/api/v1/redis", tags=["redis"])
+app.include_router(redis.router, prefix="/redis", tags=["redis"])
 
 
 @app.get("/")

@@ -161,7 +161,7 @@ class TokenService:
 
         firebase_uid = decoded_token.get("uid")
         email = decoded_token.get("email")
-
+        logger.info(f"firebase_uid: {firebase_uid}, email: {email}")
         # 사용자 조회
         try:
             user = self.user_service.get_by_firebase_uid(firebase_uid)

@@ -255,7 +255,9 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                 # 중복 사용자 확인
                 if self._check_exists(CHECK_USER_EXISTS, (firebase_uid,)):
                     # 이미 존재하는 경우 기존 사용자 반환
-                    result = self._execute_query(GET_USER_BY_FIREBASE_UID, (firebase_uid,))
+                    result = self._execute_query(
+                        GET_USER_BY_FIREBASE_UID, (firebase_uid,)
+                    )
                     return self._convert_to_response(result)
 
                 # ULID 생성
@@ -286,7 +288,12 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
     ) -> UserResponse:
         """온보딩 완료 시 사용자 프로필 업데이트"""
         try:
+            import logging
             from datetime import datetime
+
+            from psycopg2.extras import Json
+
+            logger = logging.getLogger(__name__)
 
             with db.get_cursor() as (cursor, conn):
                 # 사용자 존재 확인
@@ -299,30 +306,126 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                 # 온보딩 완료 시각
                 onboarding_completed_at = datetime.now()
 
-                cursor.execute(
-                    UPDATE_USER_ONBOARDING,
-                    (
-                        True,  # is_personalization_enabled
-                        True,  # has_completed_onboarding
-                        onboarding_completed_at,
-                        onboarding_data.location,
-                        onboarding_data.location_method,
-                        onboarding_data.user_lat,
-                        onboarding_data.user_lon,
-                        onboarding_data.birth_year,
-                        onboarding_data.gender,
-                        onboarding_data.dining_companions,
-                        onboarding_data.regular_budget,
-                        onboarding_data.special_budget,
-                        onboarding_data.spice_level,
-                        onboarding_data.allergies,
-                        onboarding_data.dislikes,
-                        onboarding_data.food_preferences_large,
-                        onboarding_data.food_preferences_middle,
-                        onboarding_data.restaurant_ratings,
-                        firebase_uid,
-                    ),
+                # 디버깅: 원본 데이터 타입 및 값 로깅
+                logger.info("=== 온보딩 데이터 디버깅 시작 ===")
+                logger.info(
+                    f"dining_companions: type={type(onboarding_data.dining_companions)}, value={onboarding_data.dining_companions}"
                 )
+                logger.info(
+                    f"food_preferences_large: type={type(onboarding_data.food_preferences_large)}, value={onboarding_data.food_preferences_large}"
+                )
+                logger.info(
+                    f"food_preferences_middle: type={type(onboarding_data.food_preferences_middle)}, value={onboarding_data.food_preferences_middle}"
+                )
+                logger.info(
+                    f"restaurant_ratings: type={type(onboarding_data.restaurant_ratings)}, value={onboarding_data.restaurant_ratings}"
+                )
+
+                # 리스트 타입 처리 (psycopg2가 자동으로 ARRAY로 변환)
+                # None이면 None, 빈 리스트면 빈 리스트 그대로 전달
+                dining_companions_array = (
+                    onboarding_data.dining_companions
+                    if onboarding_data.dining_companions is not None
+                    else None
+                )
+                food_preferences_large_array = (
+                    onboarding_data.food_preferences_large
+                    if onboarding_data.food_preferences_large is not None
+                    else None
+                )
+
+                # dict 타입을 psycopg2.extras.Json으로 변환 (JSONB 타입에 적합)
+                # 빈 dict도 Json({})로 변환
+                if onboarding_data.food_preferences_middle is not None:
+                    food_preferences_middle_json = Json(
+                        onboarding_data.food_preferences_middle
+                    )
+                    logger.info(
+                        f"food_preferences_middle_json: type={type(food_preferences_middle_json)}, value={food_preferences_middle_json}"
+                    )
+                else:
+                    food_preferences_middle_json = None
+                    logger.info("food_preferences_middle_json: None")
+
+                if onboarding_data.restaurant_ratings is not None:
+                    restaurant_ratings_json = Json(onboarding_data.restaurant_ratings)
+                    logger.info(
+                        f"restaurant_ratings_json: type={type(restaurant_ratings_json)}, value={restaurant_ratings_json}"
+                    )
+                else:
+                    restaurant_ratings_json = None
+                    logger.info("restaurant_ratings_json: None")
+
+                # 디버깅: 변환된 데이터 타입 로깅
+                logger.info("=== 변환된 데이터 타입 ===")
+                logger.info(
+                    f"dining_companions_array: type={type(dining_companions_array)}, value={dining_companions_array}"
+                )
+                logger.info(
+                    f"food_preferences_large_array: type={type(food_preferences_large_array)}, value={food_preferences_large_array}"
+                )
+
+                # 모든 파라미터를 튜플로 구성
+                params = (
+                    True,  # is_personalization_enabled
+                    True,  # has_completed_onboarding
+                    onboarding_completed_at,
+                    onboarding_data.location,
+                    onboarding_data.location_method,
+                    onboarding_data.user_lat,
+                    onboarding_data.user_lon,
+                    onboarding_data.birth_year,
+                    onboarding_data.gender,
+                    dining_companions_array,
+                    onboarding_data.regular_budget,
+                    onboarding_data.special_budget,
+                    onboarding_data.spice_level,
+                    onboarding_data.allergies,
+                    onboarding_data.dislikes,
+                    food_preferences_large_array,
+                    food_preferences_middle_json,
+                    restaurant_ratings_json,
+                    firebase_uid,
+                )
+
+                # 디버깅: 모든 파라미터 타입 검증
+                logger.info("=== 파라미터 타입 검증 ===")
+                param_names = [
+                    "is_personalization_enabled",
+                    "has_completed_onboarding",
+                    "onboarding_completed_at",
+                    "location",
+                    "location_method",
+                    "user_lat",
+                    "user_lon",
+                    "birth_year",
+                    "gender",
+                    "dining_companions",
+                    "regular_budget",
+                    "special_budget",
+                    "spice_level",
+                    "allergies",
+                    "dislikes",
+                    "food_preferences_large",
+                    "food_preferences_middle",
+                    "restaurant_ratings",
+                    "firebase_uid",
+                ]
+
+                for i, (name, value) in enumerate(zip(param_names, params)):
+                    logger.info(f"param[{i}] {name}: type={type(value)}, value={value}")
+                    # dict 타입이 Json으로 변환되지 않은 경우 감지
+                    if isinstance(value, dict) and name not in [
+                        "food_preferences_middle",
+                        "restaurant_ratings",
+                    ]:
+                        logger.error(
+                            f"ERROR: {name} is dict type but not converted to Json!"
+                        )
+
+                logger.info("=== SQL 실행 시작 ===")
+                cursor.execute(UPDATE_USER_ONBOARDING, params)
+                logger.info("=== SQL 실행 완료 ===")
 
                 result = cursor.fetchone()
                 conn.commit()
@@ -330,6 +433,11 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                 return self._convert_to_response(result)
 
         except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"온보딩 데이터 업데이트 중 오류 발생: {type(e).__name__}: {str(e)}"
+            )
+            logger.exception("상세 오류 정보:")
             self._handle_exception("updating onboarding data", e)
 
     def _convert_to_response(self, row: dict) -> UserResponse:

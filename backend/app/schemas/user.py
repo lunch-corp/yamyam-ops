@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +28,7 @@ class OnboardingDataCreate(BaseModel):
     # Basic information
     birth_year: int | None = None
     gender: str | None = Field(None, max_length=20)
-    dining_companions: List[str] | None = None
+    dining_companions: list[str] | None = None
 
     # Budget information
     regular_budget: str | None = Field(None, max_length=50)
@@ -40,11 +40,11 @@ class OnboardingDataCreate(BaseModel):
     dislikes: str | None = None
 
     # Food preferences
-    food_preferences_large: List[str] | None = None
-    food_preferences_middle: Dict[str, Any] | None = None
+    food_preferences_large: list[str] | None = None
+    food_preferences_middle: dict[str, Any] | None = None
 
     # Restaurant ratings
-    restaurant_ratings: Dict[str, Any] | None = None
+    restaurant_ratings: dict[str, Any] | None = None
 
 
 class UserUpdate(BaseModel):
@@ -62,15 +62,15 @@ class UserUpdate(BaseModel):
     user_lon: float | None = None
     birth_year: int | None = None
     gender: str | None = Field(None, max_length=20)
-    dining_companions: List[str] | None = None
+    dining_companions: list[str] | None = None
     regular_budget: str | None = Field(None, max_length=50)
     special_budget: str | None = Field(None, max_length=50)
     spice_level: int | None = None
     allergies: str | None = None
     dislikes: str | None = None
-    food_preferences_large: List[str] | None = None
-    food_preferences_middle: Dict[str, Any] | None = None
-    restaurant_ratings: Dict[str, Any] | None = None
+    food_preferences_large: list[str] | None = None
+    food_preferences_middle: dict[str, Any] | None = None
+    restaurant_ratings: dict[str, Any] | None = None
 
 
 class User(UserBase):
@@ -103,15 +103,15 @@ class UserResponse(BaseModel):
     user_lon: float | None = None
     birth_year: int | None = None
     gender: str | None = None
-    dining_companions: List[str] | None = None
+    dining_companions: list[str] | None = None
     regular_budget: str | None = None
     special_budget: str | None = None
     spice_level: int | None = None
     allergies: str | None = None
     dislikes: str | None = None
-    food_preferences_large: List[str] | None = None
-    food_preferences_middle: Dict[str, Any] | None = None
-    restaurant_ratings: Dict[str, Any] | None = None
+    food_preferences_large: list[str] | None = None
+    food_preferences_middle: dict[str, Any] | None = None
+    restaurant_ratings: dict[str, Any] | None = None
 
 
 class FirebaseUserInfo(BaseModel):

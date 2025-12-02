@@ -12,8 +12,9 @@ INSERT_KAKAO_DINER_BASIC = """
         diner_idx, diner_name, diner_tag, diner_menu_name, diner_menu_price,
         diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
         diner_road_address, diner_num_address, diner_phone,
-        diner_lat, diner_lon, diner_open_time
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        diner_lat, diner_lon, diner_open_time,
+        diner_grade, hidden_score, bayesian_score
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (diner_idx) DO UPDATE SET
         diner_name = EXCLUDED.diner_name,
         diner_tag = EXCLUDED.diner_tag,
@@ -29,6 +30,9 @@ INSERT_KAKAO_DINER_BASIC = """
         diner_lat = EXCLUDED.diner_lat,
         diner_lon = EXCLUDED.diner_lon,
         diner_open_time = EXCLUDED.diner_open_time,
+        diner_grade = EXCLUDED.diner_grade,
+        hidden_score = EXCLUDED.hidden_score,
+        bayesian_score = EXCLUDED.bayesian_score,
         updated_at = CURRENT_TIMESTAMP
 """
 
@@ -67,6 +71,21 @@ UPDATE_KAKAO_DINER_TAGS = """
     WHERE diner_idx = %s
 """
 
+UPDATE_KAKAO_DINER_GRADE_BAYESIAN = """
+    UPDATE kakao_diner SET
+        diner_grade = %s,
+        bayesian_score = %s,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE diner_idx = %s
+"""
+
+UPDATE_KAKAO_DINER_HIDDEN_SCORE = """
+    UPDATE kakao_diner SET
+        hidden_score = %s,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE diner_idx = %s
+"""
+
 # 카테고리 테이블 관련 쿼리
 INSERT_KAKAO_CATEGORY = """
     INSERT INTO kakao_diner_category (
@@ -88,6 +107,7 @@ GET_KAKAO_DINER_BY_IDX = """
            diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
            diner_road_address, diner_num_address, diner_phone,
            diner_lat, diner_lon, diner_open_time,
+           diner_grade, hidden_score, bayesian_score,
            crawled_at, updated_at
     FROM kakao_diner WHERE diner_idx = %s
 """
@@ -98,6 +118,7 @@ GET_ALL_KAKAO_DINERS = """
            diner_road_address, diner_num_address, diner_phone,
            diner_lat, diner_lon, diner_open_time,
            diner_category_large, diner_category_middle, diner_category_small, diner_category_detail,
+           diner_grade, hidden_score, bayesian_score,
            crawled_at, updated_at
     FROM kakao_diner ORDER BY diner_review_avg DESC NULLS LAST, diner_blog_review_cnt DESC
     LIMIT %s OFFSET %s
@@ -108,6 +129,7 @@ GET_ALL_KAKAO_DINERS_API = """
            diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
            diner_road_address, diner_num_address, diner_phone,
            diner_lat, diner_lon, diner_open_time,
+           diner_grade, hidden_score, bayesian_score,
            crawled_at, updated_at
     FROM kakao_diner ORDER BY id LIMIT %s OFFSET %s
 """
@@ -127,12 +149,15 @@ UPDATE_KAKAO_DINER_BY_IDX = """
         diner_name = %s, diner_tag = %s, diner_menu_name = %s, diner_menu_price = %s,
         diner_review_cnt = %s, diner_review_avg = %s, diner_blog_review_cnt = %s,
         diner_review_tags = %s, diner_road_address = %s, diner_num_address = %s,
-        diner_phone = %s, diner_lat = %s, diner_lon = %s, updated_at = CURRENT_TIMESTAMP
+        diner_phone = %s, diner_lat = %s, diner_lon = %s,
+        diner_grade = %s, hidden_score = %s, bayesian_score = %s,
+        updated_at = CURRENT_TIMESTAMP
     WHERE diner_idx = %s
     RETURNING id, diner_idx, diner_name, diner_tag, diner_menu_name, diner_menu_price,
               diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
               diner_road_address, diner_num_address, diner_phone,
               diner_lat, diner_lon, diner_open_time,
+              diner_grade, hidden_score, bayesian_score,
               crawled_at, updated_at
 """
 
@@ -221,8 +246,8 @@ GET_TOP_REVIEWERS = """
     SELECT id, reviewer_id, reviewer_user_name,
            reviewer_review_cnt, reviewer_avg, badge_grade, badge_level,
            crawled_at, updated_at
-    FROM kakao_reviewer 
-    ORDER BY reviewer_review_cnt DESC, reviewer_avg DESC 
+    FROM kakao_reviewer
+    ORDER BY reviewer_review_cnt DESC, reviewer_avg DESC
     LIMIT %s
 """
 

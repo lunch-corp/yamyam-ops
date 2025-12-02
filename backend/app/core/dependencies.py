@@ -23,8 +23,34 @@ def get_firebase_user(
 def get_firebase_uid(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
-    """Firebase 인증된 사용자 UID 반환"""
-    return get_user_uid(credentials.credentials)
+    """
+    Firebase 인증된 사용자 UID 반환 (하이브리드: JWT 또는 Firebase ID Token 지원)
+
+    먼저 JWT 토큰을 시도하고, 실패하면 Firebase ID Token을 시도합니다.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    token = credentials.credentials
+
+    # 먼저 JWT 토큰으로 시도
+    try:
+        token_payload = token_service.verify_access_token(token)
+        logger.debug("JWT 토큰으로 인증 성공")
+        return token_payload.firebase_uid
+    except HTTPException as e:
+        # JWT 토큰이 실패하면 Firebase ID Token으로 시도
+        logger.debug(f"JWT 토큰 검증 실패, Firebase ID Token으로 시도: {e.detail}")
+        pass
+
+    # Firebase ID Token으로 시도
+    try:
+        firebase_uid = get_user_uid(token)
+        logger.debug("Firebase ID Token으로 인증 성공")
+        return firebase_uid
+    except HTTPException as e:
+        logger.error(f"모든 토큰 검증 실패: {e.detail}")
+        raise
 
 
 def get_optional_firebase_user(

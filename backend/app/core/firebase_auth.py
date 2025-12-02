@@ -22,28 +22,13 @@ class FirebaseAuth:
     def _initialize_firebase(self):
         """Firebase 초기화"""
         try:
-            import os
+            logger.info("Firebase 초기화 시작 - FIREBASE_KEY 환경변수 확인 중...")
 
-            # GOOGLE_APPLICATION_CREDENTIALS 환경변수 확인
-            credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-            logger.info(f"Firebase 초기화 시작 - credentials_path: {credentials_path}")
-
-            if credentials_path and os.path.exists(credentials_path):
-                logger.info(f"Firebase 키 파일 발견: {credentials_path}")
-                # 파일 경로로 직접 초기화
-                cred = credentials.Certificate(credentials_path)
-                self._app = firebase_admin.initialize_app(cred)
-                logger.info(
-                    "✅ Firebase가 성공적으로 초기화되었습니다! (파일 경로 방식)"
-                )
-                return
-
-            # 기존 방식 (환경변수에서 JSON 문자열)
-            logger.info("Firebase 키 파일이 없음. 환경변수에서 키 확인 중...")
+            # FIREBASE_KEY 환경변수에서 Firebase 키 가져오기
             firebase_key = self._get_firebase_key()
             if not firebase_key:
                 logger.warning(
-                    "Firebase 키가 설정되지 않았습니다. Firebase 기능이 비활성화됩니다."
+                    "FIREBASE_KEY가 설정되지 않았습니다. Firebase 기능이 비활성화됩니다."
                 )
                 return
 
@@ -67,17 +52,7 @@ class FirebaseAuth:
         """환경변수에서 Firebase 키 가져오기"""
         import os
 
-        # GOOGLE_APPLICATION_CREDENTIALS 환경변수 확인
-        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if credentials_path and os.path.exists(credentials_path):
-            try:
-                with open(credentials_path) as f:
-                    return f.read()
-            except Exception as e:
-                logger.error(f"Firebase 키 파일 읽기 실패: {e}")
-                return None
-
-        # 기존 FIREBASE_KEY 환경변수 확인
+        # FIREBASE_KEY 환경변수 확인
         return os.getenv("FIREBASE_KEY")
 
     def verify_token(self, token: str) -> dict | None:

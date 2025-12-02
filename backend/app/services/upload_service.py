@@ -28,6 +28,8 @@ class UploadService:
             "diner_tags": kakao_queries.UPDATE_KAKAO_DINER_TAGS,
             "reviewers": kakao_queries.INSERT_KAKAO_REVIEWER,
             "reviews": kakao_queries.INSERT_KAKAO_REVIEW,
+            "diner_grade_bayesian": kakao_queries.UPDATE_KAKAO_DINER_GRADE_BAYESIAN,
+            "diner_hidden_score": kakao_queries.UPDATE_KAKAO_DINER_HIDDEN_SCORE,
         }
 
         # 설정 일관성 검증
@@ -244,6 +246,18 @@ class UploadService:
     async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> dict:
         """reviews.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviews", dry_run)
+
+    async def upload_diner_grade_bayesian(
+        self, file: UploadFile, dry_run: bool = False
+    ) -> dict:
+        """diner_grade_bayesian.csv 파일 업로드"""
+        return await self._upload_csv_file(file, "diner_grade_bayesian", dry_run)
+
+    async def upload_diner_hidden_score(
+        self, file: UploadFile, dry_run: bool = False
+    ) -> dict:
+        """diner_hidden_score.csv 파일 업로드"""
+        return await self._upload_csv_file(file, "diner_hidden_score", dry_run)
 
     def add_new_file_type(
         self,
