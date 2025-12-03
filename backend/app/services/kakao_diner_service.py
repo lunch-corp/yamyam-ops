@@ -184,9 +184,8 @@ class KakaoDinerService(
         user_lon: float | None = None,
         radius_km: float | None = None,
         user_id: str | None = None,
-        sort_by: str = "rating",  # personalization, popularity, hidden_gem, rating, distance, review_count
+        sort_by: str = "rating",  # personalization, popularity, hidden_gem, rating, distance, review_count, random
         use_dataframe: bool = False,
-        random: int = 0,
     ) -> list[KakaoDinerResponse]:
         """
         카카오 음식점 목록 조회 (필터링 및 정렬)
@@ -202,9 +201,8 @@ class KakaoDinerService(
             user_lon: 사용자 경도 (거리 필터 및 정렬용)
             radius_km: 반경 (km) - 기본 필터
             user_id: 사용자 ID (개인화 정렬용)
-            sort_by: 정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count 중 하나)
+            sort_by: 정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count, random 중 하나)
             use_dataframe: pandas dataframe 사용 여부
-            random: 랜덤 선택 개수 (0이면 랜덤 미적용)
 
         Returns:
             음식점 목록
@@ -290,54 +288,57 @@ class KakaoDinerService(
         # 2. 결과를 DataFrame으로 변환
         df = pd.DataFrame(results)
 
-        if random > 0:
-            # 랜덤으로 샘플링 (random 개수만큼, 데이터가 random보다 적으면 전체 반환)
-            sample_size = min(random, len(df))
-            df = df.sample(n=sample_size)
-        else:
-            # 3. 정렬 기준에 따라 필요한 점수만 계산
-            diner_idx_list = df["diner_idx"].tolist()
-
-            if sort_by == "personalization":
-                # 개인화 점수 계산 및 정렬
-                personalization_df = self._calculate_personalization_score(
-                    diner_idx_list, user_id
-                )
-                df = self._sort_by_score_or_bayesian(df, personalization_df)
-
-            elif sort_by == "popularity":
-                # 인기도 점수 계산 및 정렬
-                popularity_df = self._calculate_popularity_score(df)
-                df = self._sort_by_score_or_bayesian(df, popularity_df)
-
-            elif sort_by == "hidden_gem":
-                # 숨찐맛 점수 계산 및 정렬
-                hidden_gem_df = self._calculate_hidden_gem_score(diner_idx_list)
-                df = self._sort_by_score_or_bayesian(df, hidden_gem_df)
-
-            elif sort_by == "rating":
-                # 평점순 정렬
-                df = df.sort_values(by=["diner_review_avg"], ascending=False)
-
-            elif sort_by == "review_count":
-                # 리뷰수순 정렬
-                df = df.sort_values(by=["diner_review_cnt"], ascending=False)
-
-            elif sort_by == "distance":
-                # 거리순 정렬 (거리 정보가 있는 경우만)
-                if "distance_km" in df.columns:
-                    df = df.sort_values(by=["distance_km"], ascending=True)
-                else:
-                    # 거리 정보가 없으면 평점순으로 대체
-                    df = df.sort_values(by=["diner_review_avg"], ascending=False)
-
+        # 랜덤 정렬 (limit 우선 적용)
+        if sort_by == "random":
+            if limit is None:
+                df = df.sample(frac=1)  # 전체 셔플
             else:
-                # 기본값: 평점순
+                df = df.sample(n=min(limit, len(df)), replace=False)
+            return [self._convert_to_response(r.to_dict()) for _, r in df.iterrows()]
+
+        # 3. 정렬 기준에 따라 필요한 점수만 계산
+        diner_idx_list = df["diner_idx"].tolist()
+
+        if sort_by == "personalization":
+            # 개인화 점수 계산 및 정렬
+            personalization_df = self._calculate_personalization_score(
+                diner_idx_list, user_id
+            )
+            df = self._sort_by_score_or_bayesian(df, personalization_df)
+
+        elif sort_by == "popularity":
+            # 인기도 점수 계산 및 정렬
+            popularity_df = self._calculate_popularity_score(df)
+            df = self._sort_by_score_or_bayesian(df, popularity_df)
+
+        elif sort_by == "hidden_gem":
+            # 숨찐맛 점수 계산 및 정렬
+            hidden_gem_df = self._calculate_hidden_gem_score(diner_idx_list)
+            df = self._sort_by_score_or_bayesian(df, hidden_gem_df)
+
+        elif sort_by == "rating":
+            # 평점순 정렬
+            df = df.sort_values(by=["diner_review_avg"], ascending=False)
+
+        elif sort_by == "review_count":
+            # 리뷰수순 정렬
+            df = df.sort_values(by=["diner_review_cnt"], ascending=False)
+
+        elif sort_by == "distance":
+            # 거리순 정렬 (거리 정보가 있는 경우만)
+            if "distance_km" in df.columns:
+                df = df.sort_values(by=["distance_km"], ascending=True)
+            else:
+                # 거리 정보가 없으면 평점순으로 대체
                 df = df.sort_values(by=["diner_review_avg"], ascending=False)
 
-            # 4. top-k 적용 (limit이 None이면 전체 반환)
-            if limit is not None:
-                df = df.head(limit)
+        else:
+            # 기본값: 평점순
+            df = df.sort_values(by=["diner_review_avg"], ascending=False)
+
+        # 4. top-k 적용 (limit이 None이면 전체 반환)
+        if limit is not None:
+            df = df.head(limit)
 
         # 5. Response 모델로 변환
         return (

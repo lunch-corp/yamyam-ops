@@ -60,13 +60,7 @@ def list_restaurants(
     user_id: str | None = Query(None, description="사용자 ID (개인화 정렬용)"),
     sort_by: str = Query(
         "rating",
-        description="정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count)",
-    ),
-    random: int = Query(
-    0,
-    ge=0,
-    le=1000,
-    description="랜덤 선택 개수 (0이면 랜덤 미적용, 1 이상이면 해당 개수만큼 랜덤 선택)",
+        description="정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count, random)",
     ),
 ):
     """
@@ -86,15 +80,11 @@ def list_restaurants(
     - rating: 평점순 (기본값)
     - review_count: 리뷰수순
     - distance: 거리순 (user_lat, user_lon 필요)
-
-    **랜덤 선택:**
-    - random: 0이면 정렬 기준에 따라 순서대로 반환
-    - random: 1 이상이면 필터링 후 해당 개수만큼 랜덤하게 선택
+    - random: 무작위
 
     **참고:**
     - 거리는 기본 필터링(radius_km)과 정렬 기준(sort_by=distance) 모두 가능
     - 정렬 기준은 하나만 적용됨
-    - random이 설정되면 sort_by는 무시됨
     """
     return diner_service.get_list(
         limit=limit,
@@ -108,7 +98,6 @@ def list_restaurants(
         radius_km=radius_km,
         user_id=user_id,
         sort_by=sort_by,
-        random=random,
     )
 
 
