@@ -37,7 +37,7 @@ FROM users ORDER BY created_at DESC LIMIT %s OFFSET %s
 
 UPDATE_USER_BY_ID = """
 UPDATE users SET
-    name = %s, email = %s, display_name = %s, photo_url = %s, kakao_reviewer_id = %s,
+    {fields}
     updated_at = CURRENT_TIMESTAMP
 WHERE id = %s
 RETURNING id, firebase_uid, name, email, display_name, photo_url, kakao_reviewer_id,
@@ -46,7 +46,7 @@ RETURNING id, firebase_uid, name, email, display_name, photo_url, kakao_reviewer
 
 UPDATE_USER_BY_FIREBASE_UID = """
 UPDATE users SET
-    name = %s, email = %s, display_name = %s, photo_url = %s, kakao_reviewer_id = %s,
+    {fields}
     updated_at = CURRENT_TIMESTAMP
 WHERE firebase_uid = %s
 RETURNING id, firebase_uid, name, email, display_name, photo_url, kakao_reviewer_id,

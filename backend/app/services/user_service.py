@@ -107,10 +107,10 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         # Choose the correct existence check and update query based on user_id_type
         if user_id_type == UserIdType.ID:
             exists_query = CHECK_USER_EXISTS_BY_ID
-            update_query = UPDATE_USER_BY_ID
+            update_query_template = UPDATE_USER_BY_ID
         else:  # firebase_uid
             exists_query = CHECK_USER_EXISTS
-            update_query = UPDATE_USER_BY_FIREBASE_UID
+            update_query_template = UPDATE_USER_BY_FIREBASE_UID
 
         # 사용자 존재 확인
         if not self._check_exists(exists_query, (user_id,)):
@@ -119,19 +119,25 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
                 detail="사용자를 찾을 수 없습니다.",
             )
 
-        # 업데이트할 필드와 값 구성
+        # 업데이트할 필드와 값 구성 (None이 아닌 값만)
+        update_fields = []
         update_values = []
-        field_mapping = {
-            "name": data.name,
-            "email": data.email,
-            "display_name": data.display_name,
-            "photo_url": data.photo_url,
-            "kakao_reviewer_id": data.kakao_reviewer_id,
-        }
 
-        for field, value in field_mapping.items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             if value is not None:
+                update_fields.append(f"{field} = %s")
                 update_values.append(value)
+
+        # 업데이트할 필드가 없으면 에러
+        if not update_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="업데이트할 필드가 없습니다.",
+            )
+
+        # 동적으로 쿼리 생성
+        fields_str = ", ".join(update_fields) + ","
+        update_query = update_query_template.format(fields=fields_str)
 
         # user_id를 마지막에 추가
         update_values.append(user_id)
