@@ -1,48 +1,70 @@
-FROM python:3.11-slim
+# ============ STAGE 1: BUILDER ============
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# 시스템 패키지 업데이트 및 필요한 패키지 설치
+# Install BUILD dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
-    curl \
-    sshpass \
-    openssh-client \
     git \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
-# GIT HUB ARG & 환경변수 설정
+# GitHub token
 ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=${GITHUB_TOKEN}
 RUN git config --global url."https://oauth2:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
-# Clone config repository
-RUN git clone https://github.com/lunch-corp/yamyam-lab-config.git /app/config
+# Clone config
+RUN git clone https://github.com/lunch-corp/yamyam-lab-config.git /build/config
 
-# uv 설치
-RUN pip install uv
+# Install uv
+RUN pip install --no-cache-dir uv
 
-# Python 의존성 설치 (uv 사용)
+# Install Python dependencies
 COPY pyproject.toml .
-RUN uv pip install --system -e .
+RUN uv pip install --system --no-cache -e .
 
-# 애플리케이션 코드 복사
+# ============ STAGE 2: RUNTIME ============
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install RUNTIME dependencies only (not build tools)
+RUN apt-get update && apt-get install -y \
+    libgomp1 \
+    libpq5 \
+    curl \
+    sshpass \
+    openssh-client \
+    libgfortran5 \
+    libomp5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed Python packages from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy config (without .git)
+COPY --from=builder /build/config /app/config
+RUN rm -rf /app/config/.git
+
+# Copy application code
 COPY . .
 
-# 비root 사용자 생성 및 권한 설정
+# Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 USER app
 
-# 포트 노출
+# Expose port
 EXPOSE 8000
 
-# 헬스체크 추가
+# Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# 서버 실행
+# Run server
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers $WORKERS"]
