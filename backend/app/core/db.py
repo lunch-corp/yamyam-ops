@@ -57,14 +57,34 @@ class Database:
 
             Base.metadata.create_all(bind=self.engine)
 
-            # ULID 기본값 설정 함수 실행
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT set_ulid_defaults();")
-                conn.commit()
-                cursor.close()
+            # ULID 기본값 설정 함수 실행 (함수가 존재하는 경우에만)
+            # ULID는 Python 레벨에서 생성되므로 이 함수는 선택적입니다
+            try:
+                with self.get_connection() as conn:
+                    cursor = conn.cursor()
+                    # 함수 존재 여부 확인
+                    cursor.execute("""
+                        SELECT EXISTS (
+                            SELECT 1 FROM pg_proc 
+                            WHERE proname = 'set_ulid_defaults'
+                        );
+                    """)
+                    function_exists = cursor.fetchone()[0]
 
-            logging.info("데이터베이스 테이블 생성 및 ULID 기본값 설정 완료")
+                    if function_exists:
+                        cursor.execute("SELECT set_ulid_defaults();")
+                        conn.commit()
+                        logging.info("ULID 기본값 설정 함수 실행 완료")
+                    else:
+                        logging.debug(
+                            "set_ulid_defaults() 함수가 없습니다. ULID는 Python 레벨에서 생성됩니다."
+                        )
+                    cursor.close()
+            except Exception as e:
+                # 함수 실행 실패는 치명적이지 않음 (ULID는 Python에서 생성됨)
+                logging.warning(f"ULID 기본값 설정 함수 실행 중 오류 (무시됨): {e}")
+
+            logging.info("데이터베이스 테이블 생성 완료")
         except Exception as e:
             logging.error(f"테이블 생성 중 오류: {e}")
             raise

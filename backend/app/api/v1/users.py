@@ -1,9 +1,15 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.dependencies import get_firebase_uid
-from app.schemas.user import OnboardingDataCreate, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import (
+    OnboardingDataCreate,
+    UserCreate,
+    UserIdType,
+    UserResponse,
+    UserUpdate,
+)
 from app.services.user_service import UserService
 
 router = APIRouter()

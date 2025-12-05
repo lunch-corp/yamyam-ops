@@ -21,7 +21,13 @@ from app.database.user_queries import (
     UPDATE_USER_BY_ID,
     UPDATE_USER_ONBOARDING,
 )
-from app.schemas.user import OnboardingDataCreate, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import (
+    OnboardingDataCreate,
+    UserCreate,
+    UserIdType,
+    UserResponse,
+    UserUpdate,
+)
 from app.services.base_service import BaseService
 
 
@@ -463,7 +469,7 @@ class UserService(BaseService[UserCreate, UserUpdate, UserResponse]):
         return UserResponse(
             id=row["id"],
             firebase_uid=row["firebase_uid"],
-            kakao_reviewer_id=row["kakao_reviewer_id"],
+            kakao_reviewer_id=row.get("kakao_reviewer_id"),
             name=row["name"],
             email=row["email"],
             display_name=row["display_name"],

@@ -2,6 +2,8 @@
 카카오 음식점 서비스
 """
 
+import logging
+
 from fastapi import HTTPException, status
 
 from app.core.db import db
@@ -18,6 +20,8 @@ from app.schemas.kakao_diner import (
     KakaoDinerUpdate,
 )
 from app.services.base_service import BaseService
+
+logger = logging.getLogger(__name__)
 
 
 class KakaoDinerService(
@@ -125,6 +129,247 @@ class KakaoDinerService(
             )
 
         return self._convert_to_response(result)
+
+    def get_list_filtered(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        diner_category_large: str | None = None,
+        diner_category_middle: str | None = None,
+        diner_category_small: str | None = None,
+        diner_category_detail: str | None = None,
+        min_rating: float | None = None,
+        user_lat: float | None = None,
+        user_lon: float | None = None,
+        radius_km: float | None = None,
+    ) -> list[KakaoDinerResponse]:
+        """
+        카카오 음식점 목록 조회 (필터링만 수행, 정렬 없음)
+
+        Args:
+            limit: 반환할 최대 레코드 수 (top-k)
+            offset: 페이지네이션 오프셋 (None이면 0으로 처리)
+            diner_category_large: 대분류 카테고리 필터
+            diner_category_middle: 중분류 카테고리 필터
+            diner_category_small: 소분류 카테고리 필터
+            diner_category_detail: 세부 카테고리 필터
+            min_rating: 최소 평점 필터
+            user_lat: 사용자 위도 (거리 필터용)
+            user_lon: 사용자 경도 (거리 필터용)
+            radius_km: 반경 (km) - 기본 필터
+
+        Returns:
+            음식점 목록
+        """
+        # 1. SQL 쿼리로 기본 필터링 수행
+        fields = [
+            "id",
+            "diner_idx",
+            "diner_name",
+            "diner_tag",
+            "diner_menu_name",
+            "diner_menu_price",
+            "diner_review_cnt",
+            "diner_review_avg",
+            "diner_blog_review_cnt",
+            "diner_review_tags",
+            "diner_road_address",
+            "diner_num_address",
+            "diner_phone",
+            "diner_lat",
+            "diner_lon",
+            "diner_open_time",
+            "diner_category_large",
+            "diner_category_middle",
+            "diner_category_small",
+            "diner_category_detail",
+            "diner_grade",
+            "hidden_score",
+            "bayesian_score",
+            "crawled_at",
+            "updated_at",
+        ]
+
+        conditions = []
+        params = []
+
+        # 카테고리 필터 (정확한 매칭으로 인덱스 활용)
+        if diner_category_large:
+            conditions.append("diner_category_large = %s")
+            params.append(diner_category_large)
+        if diner_category_middle:
+            conditions.append("diner_category_middle = %s")
+            params.append(diner_category_middle)
+        if diner_category_small:
+            conditions.append("diner_category_small = %s")
+            params.append(diner_category_small)
+        if diner_category_detail:
+            conditions.append("diner_category_detail = %s")
+            params.append(diner_category_detail)
+
+        # 평점 필터
+        if min_rating is not None:
+            conditions.append("diner_review_avg >= %s")
+            params.append(min_rating)
+
+        # 지역 필터 (ST_DWithin with geography - 정확한 미터 단위)
+        if user_lat is not None and user_lon is not None and radius_km is not None:
+            conditions.append(
+                f"ST_DWithin(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, "
+                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography, {radius_km * 1000})"
+            )
+
+        # 2. 쿼리 빌드 (정렬 없이 필터링만)
+        query, query_params = self._build_select_query(
+            fields,
+            conditions,
+            order_by=None,  # 정렬 없음
+            limit=limit,
+            offset=offset if offset is not None else 0,
+        )
+
+        params.extend(query_params)
+        results = self._execute_query_all(query, tuple(params))
+
+        if not results:
+            return []
+
+        # 3. Response 모델로 변환
+        logger.debug(f"results: {len(results)}")
+        return [self._convert_to_response(row) for row in results]
+
+    def get_list_sorted(
+        self,
+        diner_ids: list[str],
+        user_id: str | None = None,
+        sort_by: str = "rating",
+        min_rating: float | None = None,
+        user_lat: float | None = None,
+        user_lon: float | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[KakaoDinerResponse]:
+        """
+        음식점 ID 리스트를 받아서 정렬 및 필터링 수행
+
+        Args:
+            diner_ids: 음식점 ID 리스트 (ULID)
+            user_id: 사용자 ID (개인화 정렬용)
+            sort_by: 정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count)
+            min_rating: 최소 평점 필터
+            user_lat: 사용자 위도 (거리 정렬용)
+            user_lon: 사용자 경도 (거리 정렬용)
+            limit: 반환할 최대 레코드 수
+            offset: 페이지네이션 오프셋
+
+        Returns:
+            정렬된 음식점 목록
+        """
+        if not diner_ids:
+            return []
+
+        # 1. SQL 쿼리로 ID 리스트 기반 조회
+        fields = [
+            "id",
+            "diner_idx",
+            "diner_name",
+            "diner_tag",
+            "diner_menu_name",
+            "diner_menu_price",
+            "diner_review_cnt",
+            "diner_review_avg",
+            "diner_blog_review_cnt",
+            "diner_review_tags",
+            "diner_road_address",
+            "diner_num_address",
+            "diner_phone",
+            "diner_lat",
+            "diner_lon",
+            "diner_open_time",
+            "diner_category_large",
+            "diner_category_middle",
+            "diner_category_small",
+            "diner_category_detail",
+            "diner_grade",
+            "hidden_score",
+            "bayesian_score",
+            "crawled_at",
+            "updated_at",
+        ]
+
+        # 거리 계산이 필요한 경우 (distance 정렬)
+        if user_lat is not None and user_lon is not None:
+            fields.insert(
+                0,
+                f"ST_Distance(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, "
+                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography) / 1000 AS distance_km",
+            )
+
+        conditions = []
+        params = []
+
+        # ID 리스트 필터 (IN 절 사용)
+        placeholders = ", ".join(["%s"] * len(diner_ids))
+        conditions.append(f"id IN ({placeholders})")
+        params.extend(diner_ids)
+
+        # 평점 필터
+        if min_rating is not None:
+            conditions.append("diner_review_avg >= %s")
+            params.append(min_rating)
+
+        # 2. ORDER BY 구성 (SQL에서 정렬)
+        order_by_clause = None
+
+        if sort_by == "personalization":
+            # 개인화는 아직 미구현이므로 bayesian_score로 대체
+            order_by_clause = "bayesian_score DESC"
+
+        elif sort_by == "popularity":
+            # 인기도 = bayesian_score
+            order_by_clause = "bayesian_score DESC"
+
+        elif sort_by == "hidden_gem":
+            # 숨찐맛 = hidden_score
+            order_by_clause = "hidden_score DESC"
+
+        elif sort_by == "rating":
+            # 평점순
+            order_by_clause = "diner_review_avg DESC"
+
+        elif sort_by == "review_count":
+            # 리뷰수순 (문자열이므로 숫자로 변환하여 정렬)
+            order_by_clause = "CAST(diner_review_cnt AS INTEGER) DESC"
+
+        elif sort_by == "distance":
+            # 거리순 (거리 계산이 있는 경우만)
+            if user_lat is not None and user_lon is not None:
+                order_by_clause = "distance_km ASC"
+            else:
+                order_by_clause = "diner_review_avg DESC"  # 대체
+
+        else:
+            # 기본값: 평점순
+            order_by_clause = "diner_review_avg DESC"
+
+        # 3. 쿼리 빌드 (SQL에서 정렬 및 limit/offset 적용)
+        query, query_params = self._build_select_query(
+            fields,
+            conditions,
+            order_by=order_by_clause,
+            limit=limit,
+            offset=offset if offset is not None else 0,
+        )
+
+        params.extend(query_params)
+        results = self._execute_query_all(query, tuple(params))
+
+        if not results:
+            return []
+
+        # 4. Response 모델로 변환
+        logger.debug(f"results: {len(results)}")
+        return [self._convert_to_response(row) for row in results]
 
     def get_list(
         self,
@@ -279,6 +524,8 @@ class KakaoDinerService(
             return []
 
         # 5. Response 모델로 변환
+        logger.debug(f"results: {len(results)}")
+
         return (
             [self._convert_to_response(row) for row in results]
             if not use_dataframe

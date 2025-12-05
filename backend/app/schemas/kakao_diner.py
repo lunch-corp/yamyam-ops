@@ -55,6 +55,28 @@ class KakaoDiner(KakaoDinerBase):
         from_attributes = True
 
 
+class KakaoDinerSortRequest(BaseModel):
+    """음식점 정렬/필터링 요청 스키마"""
+
+    diner_ids: list[str] = Field(..., description="정렬할 음식점 ID 리스트 (ULID)")
+    user_id: str | None = Field(None, description="사용자 ID (개인화 정렬용)")
+    sort_by: str = Field(
+        "rating",
+        description="정렬 기준 (personalization, popularity, hidden_gem, rating, distance, review_count)",
+    )
+    min_rating: float | None = Field(None, ge=0, le=5, description="최소 평점")
+    user_lat: float | None = Field(
+        None, ge=-90, le=90, description="사용자 위도 (거리 정렬용)"
+    )
+    user_lon: float | None = Field(
+        None, ge=-180, le=180, description="사용자 경도 (거리 정렬용)"
+    )
+    limit: int | None = Field(
+        None, ge=1, le=1000, description="반환할 최대 레코드 수 (top-k)"
+    )
+    offset: int | None = Field(None, ge=0, description="페이지네이션 오프셋")
+
+
 class KakaoDinerResponse(BaseModel):
     id: str  # ULID
     diner_idx: int

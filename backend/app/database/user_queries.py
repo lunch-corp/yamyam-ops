@@ -7,9 +7,9 @@ CHECK_USER_EXISTS = "SELECT 1 FROM users WHERE firebase_uid = %s"
 CHECK_USER_EXISTS_BY_ID = "SELECT 1 FROM users WHERE id = %s"
 
 INSERT_USER = """
-INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url)
-VALUES (%s, %s, %s, %s, %s, %s)
-RETURNING id, firebase_uid, name, email, display_name, photo_url,
+INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url, kakao_reviewer_id)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
+RETURNING id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
           created_at, updated_at,
           is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
           location, location_method, user_lat, user_lon,
@@ -21,7 +21,7 @@ RETURNING id, firebase_uid, name, email, display_name, photo_url,
 """
 
 GET_USER_BY_ID = """
-SELECT id, firebase_uid, name, email, display_name, photo_url,
+SELECT id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
        created_at, updated_at,
        is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
        location, location_method, user_lat, user_lon,
@@ -34,7 +34,7 @@ FROM users WHERE id = %s
 """
 
 GET_USER_BY_FIREBASE_UID = """
-SELECT id, firebase_uid, name, email, display_name, photo_url,
+SELECT id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
        created_at, updated_at,
        is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
        location, location_method, user_lat, user_lon,
@@ -51,7 +51,7 @@ SELECT id FROM users WHERE firebase_uid = %s
 """
 
 GET_ALL_USERS = """
-SELECT id, firebase_uid, name, email, display_name, photo_url,
+SELECT id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
        created_at, updated_at,
        is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
        location, location_method, user_lat, user_lon,
@@ -68,7 +68,7 @@ UPDATE users SET
     name = %s, email = %s, display_name = %s, photo_url = %s, kakao_reviewer_id = %s,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = %s
-RETURNING id, firebase_uid, name, email, display_name, photo_url,
+RETURNING id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
           created_at, updated_at,
           is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
           location, location_method, user_lat, user_lon,
@@ -105,7 +105,7 @@ VALUES (%s, %s, %s, %s, %s, %s, %s)
 INSERT_USER_FROM_FIREBASE = """
 INSERT INTO users (id, firebase_uid, name, email, display_name, photo_url)
 VALUES (%s, %s, %s, %s, %s, %s)
-RETURNING id, firebase_uid, name, email, display_name, photo_url,
+RETURNING id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
           created_at, updated_at,
           is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
           location, location_method, user_lat, user_lon,
@@ -139,7 +139,7 @@ UPDATE users SET
     restaurant_ratings = %s,
     updated_at = CURRENT_TIMESTAMP
 WHERE firebase_uid = %s
-RETURNING id, firebase_uid, name, email, display_name, photo_url,
+RETURNING id, firebase_uid, kakao_reviewer_id, name, email, display_name, photo_url,
           created_at, updated_at,
           is_personalization_enabled, has_completed_onboarding, onboarding_completed_at,
           location, location_method, user_lat, user_lon,

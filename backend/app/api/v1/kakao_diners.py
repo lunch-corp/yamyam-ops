@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query
 from app.schemas.kakao_diner import (
     KakaoDinerCreate,
     KakaoDinerResponse,
+    KakaoDinerSortRequest,
     KakaoDinerUpdate,
 )
 from app.services.kakao_diner_service import KakaoDinerService
@@ -31,10 +32,106 @@ def create_restaurant(
 
 
 @router.get(
+    "/filtered",
+    response_model=list[KakaoDinerResponse],
+    tags=["kakao-restaurants"],
+    summary="카카오 음식점 필터링 (지역/카테고리)",
+)
+def filter_restaurants(
+    limit: int | None = Query(
+        None,
+        ge=1,
+        le=1000,
+        description="반환할 최대 레코드 수 (top-k), None이면 전체 반환",
+    ),
+    offset: int | None = Query(None, ge=0, description="페이지네이션 오프셋"),
+    diner_category_large: str | None = Query(None, description="대분류 카테고리"),
+    diner_category_middle: str | None = Query(None, description="중분류 카테고리"),
+    diner_category_small: str | None = Query(None, description="소분류 카테고리"),
+    diner_category_detail: str | None = Query(None, description="세부 카테고리"),
+    min_rating: float | None = Query(None, ge=0, le=5, description="최소 평점"),
+    user_lat: float | None = Query(
+        None, ge=-90, le=90, description="사용자 위도 (거리 필터용)"
+    ),
+    user_lon: float | None = Query(
+        None, ge=-180, le=180, description="사용자 경도 (거리 필터용)"
+    ),
+    radius_km: float | None = Query(None, gt=0, description="검색 반경 (km)"),
+):
+    """
+    카카오 음식점 필터링 (지역/카테고리)
+
+    **필터링 조건:**
+    - 카테고리: 대/중/소/세부 카테고리로 필터링
+    - 거리: 사용자 위치 기준 반경 내 검색 (user_lat, user_lon, radius_km 모두 필요)
+    - 평점: 최소 평점 이상만 조회
+
+    **참고:**
+    - 정렬은 수행하지 않음
+    - 정렬이 필요한 경우 /sorted 엔드포인트 사용
+    """
+    return diner_service.get_list_filtered(
+        limit=limit,
+        offset=offset,
+        diner_category_large=diner_category_large,
+        diner_category_middle=diner_category_middle,
+        diner_category_small=diner_category_small,
+        diner_category_detail=diner_category_detail,
+        min_rating=min_rating,
+        user_lat=user_lat,
+        user_lon=user_lon,
+        radius_km=radius_km,
+    )
+
+
+@router.post(
+    "/sorted",
+    response_model=list[KakaoDinerResponse],
+    tags=["kakao-restaurants"],
+    summary="카카오 음식점 정렬/필터링",
+)
+def sort_restaurants(request: KakaoDinerSortRequest):
+    """
+    카카오 음식점 정렬/필터링
+
+    **요청 본문:**
+    - diner_ids: 정렬할 음식점 ID 리스트 (ULID)
+    - user_id: 사용자 ID (개인화 정렬용, 선택)
+    - sort_by: 정렬 기준 (기본값: rating)
+    - min_rating: 최소 평점 (선택)
+    - user_lat, user_lon: 사용자 위치 (거리 정렬용, 선택)
+    - limit, offset: 페이지네이션
+
+    **정렬 기준:**
+    - personalization: 개인화 점수순 (user_id 필요)
+    - popularity: 인기도 점수순
+    - hidden_gem: 숨찐맛 점수순
+    - rating: 평점순 (기본값)
+    - review_count: 리뷰수순
+    - distance: 거리순 (user_lat, user_lon 필요)
+
+    **참고:**
+    - 일반적으로 /filtered 엔드포인트의 결과를 받아서 정렬
+    - ID 리스트를 기반으로 조회 및 정렬 수행
+    """
+    return diner_service.get_list_sorted(
+        diner_ids=request.diner_ids,
+        user_id=request.user_id,
+        sort_by=request.sort_by,
+        min_rating=request.min_rating,
+        user_lat=request.user_lat,
+        user_lon=request.user_lon,
+        limit=request.limit,
+        offset=request.offset,
+    )
+
+
+@router.get(
     "/",
     response_model=list[KakaoDinerResponse],
     tags=["kakao-restaurants"],
     summary="카카오 음식점 목록 조회",
+    deprecated=True,
 )
 def list_restaurants(
     limit: int | None = Query(
@@ -65,7 +162,11 @@ def list_restaurants(
     ),
 ):
     """
-    카카오 음식점 목록 조회
+    카카오 음식점 목록 조회 (DEPRECATED)
+
+    **주의: 이 엔드포인트는 deprecated 되었습니다.**
+    - 필터링: GET /filtered 사용
+    - 정렬: POST /sorted 사용
 
     **기본 필터링 (항상 적용):**
     - 카테고리: 대/중/소/세부 카테고리로 필터링

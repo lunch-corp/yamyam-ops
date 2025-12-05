@@ -7,6 +7,8 @@ from collections.abc import Callable
 
 import pandas as pd
 
+from app.utils.ulid_utils import generate_ulid
+
 
 class KakaoDataProcessor:
     """Kakao 데이터 처리 전용 클래스 - 설정 기반 처리"""
@@ -32,6 +34,7 @@ class KakaoDataProcessor:
                 "diner_open_time",
             ],
             "field_mappings": [
+                ("id", "ulid"),
                 ("diner_idx", "int"),
                 ("diner_name", "str"),
                 ("diner_tag", "list_to_comma"),
@@ -47,8 +50,12 @@ class KakaoDataProcessor:
                 ("diner_lat", "float"),
                 ("diner_lon", "float"),
                 ("diner_open_time", "str"),
+                ("diner_grade", "int_nullable"),
+                ("hidden_score", "float_nullable"),
+                ("bayesian_score", "float_nullable"),
             ],
             "sql_fields": [
+                "id",
                 "diner_idx",
                 "diner_name",
                 "diner_tag",
@@ -64,6 +71,9 @@ class KakaoDataProcessor:
                 "diner_lat",
                 "diner_lon",
                 "diner_open_time",
+                "diner_grade",
+                "hidden_score",
+                "bayesian_score",
             ],
             "query_name": "INSERT_KAKAO_DINER_BASIC",
         },
@@ -274,6 +284,7 @@ class KakaoDataProcessor:
         "str": lambda x: str(x) if pd.notnull(x) else None,
         "str_optional": lambda x: str(x) if pd.notnull(x) and str(x).strip() else None,
         "int": lambda x: int(x) if pd.notnull(x) else None,
+        "int_nullable": lambda x: int(x) if pd.notnull(x) else None,
         "float": lambda x: float(x) if pd.notnull(x) else None,
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
@@ -284,6 +295,7 @@ class KakaoDataProcessor:
         "list_to_comma": lambda x: KakaoDataProcessor.convert_list_string_to_comma_separated(
             x
         ),
+        "ulid": lambda x: generate_ulid(),  # ULID는 항상 새로 생성 (입력값 무시)
     }
 
     @classmethod
@@ -440,18 +452,43 @@ class KakaoDataProcessor:
 
         config = cls.PROCESSING_CONFIG[file_type]
         field_mappings = config["field_mappings"]
+        required_columns = config.get("required_columns", [])
 
         data = []
         for row_idx, (_, row) in enumerate(df.iterrows()):
             processed_row = []
 
             for field_name, data_type in field_mappings:
-                if field_name not in row:
-                    raise ValueError(f"컬럼 '{field_name}'이 DataFrame에 없습니다")
-
                 converter = cls.TYPE_CONVERTERS.get(data_type)
                 if not converter:
                     raise ValueError(f"지원하지 않는 데이터 타입: {data_type}")
+
+                # ulid 타입은 필드가 없어도 변환기 호출 (항상 새로 생성)
+                if data_type == "ulid":
+                    try:
+                        processed_value = converter(None)  # ulid는 입력값 무시
+                        processed_row.append(processed_value)
+                        continue
+                    except Exception as e:
+                        original_row_idx = (
+                            df.index[row_idx]
+                            if hasattr(df.index, "__getitem__")
+                            else row_idx
+                        )
+                        raise ValueError(
+                            f"행 {original_row_idx}, 필드 '{field_name}' (ULID 생성) 처리 실패: {str(e)}"
+                        ) from e
+
+                # 필수 컬럼이 아닌 경우, CSV에 없으면 None 반환
+                if field_name not in row:
+                    if field_name in required_columns:
+                        raise ValueError(
+                            f"필수 컬럼 '{field_name}'이 DataFrame에 없습니다"
+                        )
+                    else:
+                        # 선택 필드인 경우 None 반환
+                        processed_row.append(None)
+                        continue
 
                 try:
                     processed_value = converter(row[field_name])

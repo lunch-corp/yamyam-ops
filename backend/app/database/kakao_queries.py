@@ -9,12 +9,12 @@ Kakao 데이터 관련 SQL 쿼리 통합 파일
 # 기본 정보 업로드용 (CSV 업로드) - PROCESSING_CONFIG와 일치하도록 업데이트
 INSERT_KAKAO_DINER_BASIC = """
     INSERT INTO kakao_diner (
-        diner_idx, diner_name, diner_tag, diner_menu_name, diner_menu_price,
+        id, diner_idx, diner_name, diner_tag, diner_menu_name, diner_menu_price,
         diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
         diner_road_address, diner_num_address, diner_phone,
         diner_lat, diner_lon, diner_open_time,
         diner_grade, hidden_score, bayesian_score
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (diner_idx) DO UPDATE SET
         diner_name = EXCLUDED.diner_name,
         diner_tag = EXCLUDED.diner_tag,
