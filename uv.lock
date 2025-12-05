@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -5504,7 +5504,6 @@ name = "yamyam-fastapi"
 version = "0.1.0"
 source = { virtual = "backend" }
 dependencies = [
-    { name = "alembic" },
     { name = "faiss-cpu" },
     { name = "fastapi" },
     { name = "firebase-admin" },
@@ -5527,7 +5526,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "alembic", specifier = "==1.13.1" },
     { name = "faiss-cpu", specifier = "==1.7.4" },
     { name = "fastapi", specifier = "==0.104.1" },
     { name = "firebase-admin", specifier = "==6.4.0" },
