@@ -16,6 +16,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Free up disk space
+      run: |
+        echo "=== Before cleanup ==="
+        df -h /
+        echo ""
+        echo "=== Removing unnecessary software ==="
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo apt-get clean
+        echo ""
+        echo "=== Cleaning Docker ==="
+        docker system prune -af --volumes
+        echo ""
+        echo "=== After cleanup ==="
+        df -h /
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -53,6 +71,11 @@ jobs:
         images: ${{ secrets.DOCKERHUB_USERNAME }}/yamyam-ops
         tags: ${{ steps.tags.outputs.tags }}
 
+    - name: Check disk before build
+      run: |
+        echo "=== Disk before Docker build ==="
+        df -h /
+
     - name: Build and push Docker image
       id: build
       uses: docker/build-push-action@v5
@@ -66,6 +89,15 @@ jobs:
         cache-to: type=gha,mode=max
         build-args: |
           GITHUB_TOKEN=${{ secrets.ORG_GITHUB_TOKEN }}
+
+    - name: Check disk after build
+      if: always()
+      run: |
+        echo "=== Disk after Docker build ==="
+        df -h /
+        echo ""
+        echo "=== Docker disk usage ==="
+        docker system df
 
     - name: Image digest
       run: echo ${{ steps.build.outputs.digest }}
