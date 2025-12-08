@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.schemas.kakao_diner import (
     KakaoDinerCreate,
@@ -204,6 +204,48 @@ def list_restaurants(
 
 
 @router.get(
+    "/categories",
+    response_model=list[dict],
+    tags=["kakao-restaurants"],
+    summary="카테고리 통계",
+)
+def get_category_statistics(
+    category_type: str = Query(
+        ..., description="분류 단위 (large: 대분류, middle: 중분류)"
+    ),
+    large_category: str | None = Query(
+        None, description="대분류 카테고리명 (중분류 조회 시 필수)"
+    ),
+):
+    """
+    카테고리별 음식점 수 통계 조회
+
+    **Parameters:**
+    - category_type: 분류 단위
+      - "large": 대분류 카테고리별 통계
+      - "middle": 중분류 카테고리별 통계 (large_category 필수)
+    - large_category: 대분류 카테고리명 (중분류 조회 시 필수)
+
+    **Response:**
+    - name: 카테고리명
+    - count: 음식점 수
+
+    **Example:**
+    - 대분류: GET /categories?category_type=large
+    - 중분류: GET /categories?category_type=middle&large_category=한식
+    """
+    if category_type == "middle" and not large_category:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="large_category is required when category_type is 'middle'",
+        )
+
+    return diner_service.get_category_statistics(
+        category_type, large_category if category_type == "middle" else None
+    )
+
+
+@router.get(
     "/{kakao_place_id}",
     response_model=KakaoDinerResponse,
     tags=["kakao-restaurants"],
@@ -238,39 +280,3 @@ def delete_restaurant(
 ):
     """카카오 음식점 삭제"""
     return diner_service.delete(kakao_place_id, dry_run)
-
-
-@router.get(
-    "/categories/large",
-    response_model=list[dict],
-    tags=["kakao-restaurants"],
-    summary="대분류 카테고리 통계",
-)
-def get_large_category_statistics():
-    """
-    대분류 카테고리별 음식점 수 통계 조회
-
-    **Response:**
-    - name: 카테고리명
-    - count: 음식점 수
-    """
-    return diner_service.get_category_statistics("large")
-
-
-@router.get(
-    "/categories/middle",
-    response_model=list[dict],
-    tags=["kakao-restaurants"],
-    summary="중분류 카테고리 통계",
-)
-def get_middle_category_statistics(
-    large_category: str = Query(..., description="대분류 카테고리명"),
-):
-    """
-    특정 대분류의 중분류 카테고리별 음식점 수 통계 조회
-
-    **Response:**
-    - name: 카테고리명
-    - count: 음식점 수
-    """
-    return diner_service.get_category_statistics("middle", large_category)
