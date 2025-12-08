@@ -57,6 +57,11 @@ def filter_restaurants(
         None, ge=-180, le=180, description="사용자 경도 (거리 필터용)"
     ),
     radius_km: float | None = Query(None, gt=0, description="검색 반경 (km)"),
+    n: int | None = Query(
+        None,
+        ge=1,
+        description="랜덤 샘플링 개수 (지정 시 필터링된 결과에서 n개 랜덤 반환, None이면 샘플링 안 함)",
+    ),
 ):
     """
     카카오 음식점 필터링 (지역/카테고리)
@@ -66,9 +71,12 @@ def filter_restaurants(
     - 거리: 사용자 위치 기준 반경 내 검색 (user_lat, user_lon, radius_km 모두 필요)
     - 평점: 최소 평점 이상만 조회
 
-    **참고:**
-    - 정렬은 수행하지 않음
-    - 정렬이 필요한 경우 /sorted 엔드포인트 사용
+    **정렬:**
+    - 기본 정렬: bayesian_score DESC (인기도 점수순)
+
+    **랜덤 샘플링:**
+    - n이 지정되면, 필터링된 결과 중에서 n개를 랜덤하게 반환
+    - n이 None이면 정렬된 순서대로 반환 (limit 적용)
     """
     return diner_service.get_list_filtered(
         limit=limit,
@@ -81,6 +89,7 @@ def filter_restaurants(
         user_lat=user_lat,
         user_lon=user_lon,
         radius_km=radius_km,
+        n=n,
     )
 
 
@@ -131,7 +140,6 @@ def sort_restaurants(request: KakaoDinerSortRequest):
     response_model=list[KakaoDinerResponse],
     tags=["kakao-restaurants"],
     summary="카카오 음식점 목록 조회",
-    deprecated=True,
 )
 def list_restaurants(
     limit: int | None = Query(

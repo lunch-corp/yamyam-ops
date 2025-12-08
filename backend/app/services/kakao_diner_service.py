@@ -3,6 +3,7 @@
 """
 
 import logging
+import random
 
 from fastapi import HTTPException, status
 
@@ -142,12 +143,13 @@ class KakaoDinerService(
         user_lat: float | None = None,
         user_lon: float | None = None,
         radius_km: float | None = None,
+        n: int | None = None,
     ) -> list[KakaoDinerResponse]:
         """
-        카카오 음식점 목록 조회 (필터링만 수행, 정렬 없음)
+        카카오 음식점 목록 조회 (필터링 및 정렬)
 
         Args:
-            limit: 반환할 최대 레코드 수 (top-k)
+            limit: 반환할 최대 레코드 수 (top-k, n이 None일 때만 적용)
             offset: 페이지네이션 오프셋 (None이면 0으로 처리)
             diner_category_large: 대분류 카테고리 필터
             diner_category_middle: 중분류 카테고리 필터
@@ -157,6 +159,7 @@ class KakaoDinerService(
             user_lat: 사용자 위도 (거리 필터용)
             user_lon: 사용자 경도 (거리 필터용)
             radius_km: 반경 (km) - 기본 필터
+            n: 랜덤 샘플링 개수 (지정 시 필터링된 결과에서 n개 랜덤 샘플링, None이면 샘플링 안 함)
 
         Returns:
             음식점 목록
@@ -219,12 +222,16 @@ class KakaoDinerService(
                 f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography, {radius_km * 1000})"
             )
 
-        # 2. 쿼리 빌드 (정렬 없이 필터링만)
+        # 2. 쿼리 빌드
+        # n이 지정되면, 필터링된 모든 결과를 가져온 후 Python에서 샘플링
+        # n이 None이면 기본 정렬(bayesian_score DESC) 적용
+        query_limit = None if n else limit
+        order_by = "bayesian_score DESC" if not n else None
         query, query_params = self._build_select_query(
             fields,
             conditions,
-            order_by=None,  # 정렬 없음
-            limit=limit,
+            order_by=order_by,
+            limit=query_limit,
             offset=offset if offset is not None else 0,
         )
 
@@ -234,7 +241,14 @@ class KakaoDinerService(
         if not results:
             return []
 
-        # 3. Response 모델로 변환
+        # 3. 랜덤 샘플링 처리
+        if n and len(results) > n:
+            results = random.sample(results, n)
+        elif n and len(results) <= n:
+            # 결과가 n개 이하면 그대로 반환
+            pass
+
+        # 4. Response 모델로 변환
         logger.debug(f"results: {len(results)}")
         return [self._convert_to_response(row) for row in results]
 
