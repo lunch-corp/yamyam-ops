@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.schemas.kakao_diner import (
+    FilteredDinerResponse,
     KakaoDinerCreate,
     KakaoDinerResponse,
     KakaoDinerSortRequest,
@@ -33,7 +34,7 @@ def create_restaurant(
 
 @router.get(
     "/filtered",
-    response_model=list[KakaoDinerResponse],
+    response_model=list[FilteredDinerResponse],
     tags=["kakao-restaurants"],
     summary="카카오 음식점 필터링 (지역/카테고리)",
 )

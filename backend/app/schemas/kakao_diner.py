@@ -77,6 +77,14 @@ class KakaoDinerSortRequest(BaseModel):
     offset: int | None = Field(None, ge=0, description="페이지네이션 오프셋")
 
 
+class FilteredDinerResponse(BaseModel):
+    """필터링된 음식점 최소 정보 응답 (id와 distance만)"""
+
+    id: str = Field(..., description="음식점 ULID")
+    diner_idx: int = Field(..., description="카카오 음식점 고유 인덱스")
+    distance: float = Field(..., description="사용자 위치로부터의 거리 (km)")
+
+
 class KakaoDinerResponse(BaseModel):
     id: str  # ULID
     diner_idx: int
@@ -100,5 +108,6 @@ class KakaoDinerResponse(BaseModel):
     diner_grade: int | None
     hidden_score: float | None
     bayesian_score: float | None
+    distance: float | None = Field(None, description="사용자 위치로부터의 거리 (km)")
     crawled_at: str
     updated_at: str

@@ -16,6 +16,7 @@ from app.database.kakao_queries import (
     UPDATE_KAKAO_DINER_BY_IDX,
 )
 from app.schemas.kakao_diner import (
+    FilteredDinerResponse,
     KakaoDinerCreate,
     KakaoDinerResponse,
     KakaoDinerUpdate,
@@ -144,9 +145,9 @@ class KakaoDinerService(
         user_lon: float | None = None,
         radius_km: float | None = None,
         n: int | None = None,
-    ) -> list[KakaoDinerResponse]:
+    ) -> list[FilteredDinerResponse]:
         """
-        카카오 음식점 목록 조회 (필터링 및 정렬)
+        카카오 음식점 목록 조회 (필터링 및 정렬) - 최적화된 버전 (id, diner_idx, distance만 반환)
 
         Args:
             limit: 반환할 최대 레코드 수 (top-k, n이 None일 때만 적용)
@@ -162,36 +163,21 @@ class KakaoDinerService(
             n: 랜덤 샘플링 개수 (지정 시 필터링된 결과에서 n개 랜덤 샘플링, None이면 샘플링 안 함)
 
         Returns:
-            음식점 목록
+            필터링된 음식점 최소 정보 목록 (id, diner_idx, distance)
         """
-        # 1. SQL 쿼리로 기본 필터링 수행
-        fields = [
-            "id",
-            "diner_idx",
-            "diner_name",
-            "diner_tag",
-            "diner_menu_name",
-            "diner_menu_price",
-            "diner_review_cnt",
-            "diner_review_avg",
-            "diner_blog_review_cnt",
-            "diner_review_tags",
-            "diner_road_address",
-            "diner_num_address",
-            "diner_phone",
-            "diner_lat",
-            "diner_lon",
-            "diner_open_time",
-            "diner_category_large",
-            "diner_category_middle",
-            "diner_category_small",
-            "diner_category_detail",
-            "diner_grade",
-            "hidden_score",
-            "bayesian_score",
-            "crawled_at",
-            "updated_at",
-        ]
+        # 1. SQL 쿼리로 기본 필터링 수행 (최적화: id, diner_idx, distance만 선택)
+        fields = ["id", "diner_idx"]
+
+        # 거리 계산이 필요한 경우 (user_lat, user_lon이 제공될 때)
+        if user_lat is not None and user_lon is not None:
+            fields.insert(
+                0,
+                f"ST_Distance(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, "
+                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography) / 1000 AS distance",
+            )
+        else:
+            # 거리 정보가 없으면 0으로 설정
+            fields.insert(0, "0.0 AS distance")
 
         conditions = []
         params = []
@@ -248,9 +234,16 @@ class KakaoDinerService(
             # 결과가 n개 이하면 그대로 반환
             pass
 
-        # 4. Response 모델로 변환
+        # 4. FilteredDinerResponse로 변환
         logger.debug(f"results: {len(results)}")
-        return [self._convert_to_response(row) for row in results]
+        return [
+            FilteredDinerResponse(
+                id=row["id"],
+                diner_idx=row["diner_idx"],
+                distance=float(row.get("distance", 0.0)),
+            )
+            for row in results
+        ]
 
     def get_list_sorted(
         self,
@@ -456,7 +449,7 @@ class KakaoDinerService(
             fields.insert(
                 0,
                 f"ST_Distance(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, "
-                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography) / 1000 AS distance_km",
+                f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography) / 1000 AS distance",
             )
 
         conditions = []
@@ -615,6 +608,7 @@ class KakaoDinerService(
             diner_grade=row.get("diner_grade"),
             hidden_score=row.get("hidden_score"),
             bayesian_score=row.get("bayesian_score"),
+            distance=row.get("distance"),
             crawled_at=row["crawled_at"].isoformat(),
             updated_at=row["updated_at"].isoformat(),
         )
