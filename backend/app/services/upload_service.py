@@ -66,12 +66,15 @@ class UploadService:
             # 파일 읽기
             content = await file.read()
             df = FileProcessor.read_csv(content)
+            # 파일 내용 메모리 해제
+            del content
 
             # TODO: 크롤러 클리너가 마련되면 빼기
             is_valid, error_msg = FileProcessor.validate_columns(
                 df, KakaoDataProcessor.get_required_columns(file_type)
             )
             if not is_valid:
+                del df  # 메모리 해제
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg
                 )
@@ -92,7 +95,7 @@ class UploadService:
                         validation_errors.append(f"배치 처리 실패: {str(e)}")
                         logger.error(f"[DRY RUN] 배치 처리 실패: {str(e)}")
 
-                return {
+                result = {
                     "message": f"[DRY RUN] {file_type} 파일 검증 완료",
                     "total_rows": len(df),
                     "validation_errors": validation_errors,
@@ -101,6 +104,9 @@ class UploadService:
                     if not validation_errors
                     else "validation_failed",
                 }
+                # DataFrame 메모리 해제
+                del df
+                return result
 
             # 실제 DB 저장
             success_count = 0
@@ -119,18 +125,24 @@ class UploadService:
                         error_count += len(batch_data)
                         logger.error(f"배치 저장 실패: {str(e)}")
 
-            return {
+            result = {
                 "message": f"{file_type} 파일 업로드 완료",
                 "total_rows": len(df),
                 "success_count": success_count,
                 "error_count": error_count,
                 "dry_run": False,
             }
+            # DataFrame 메모리 해제
+            del df
+            return result
 
         except HTTPException:
             raise
         except Exception as e:
             logger.error(f"파일 업로드 중 오류: {str(e)}")
+            # 에러 발생 시에도 메모리 정리 시도
+            if 'df' in locals():
+                del df
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"파일 처리 중 오류가 발생했습니다: {str(e)}",

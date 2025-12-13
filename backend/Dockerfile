@@ -32,5 +32,13 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
+# Python 가비지 컬렉션 최적화 환경 변수 설정
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+# 메모리 최적화를 위한 가비지 컬렉션 설정
+ENV PYTHONHASHSEED=random
+# 메모리 사용량 모니터링 (선택사항)
+ENV MALLOC_ARENA_MAX=2
+
 # 서버 실행
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers $WORKERS"]

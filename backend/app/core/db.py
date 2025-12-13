@@ -12,8 +12,16 @@ from app.core.config import settings
 class Database:
     def __init__(self):
         self.connection_string = settings.database_url
-        # SQLAlchemy 엔진 생성
-        self.engine = create_engine(self.connection_string)
+        # SQLAlchemy 엔진 생성 (연결 풀 최적화)
+        self.engine = create_engine(
+            self.connection_string,
+            # 연결 풀 설정 (메모리 최적화)
+            pool_size=5,  # 기본 연결 수
+            max_overflow=10,  # 추가 연결 수
+            pool_recycle=3600,  # 1시간마다 연결 재사용 (메모리 누수 방지)
+            pool_pre_ping=True,  # 연결 유효성 사전 확인
+            echo=False,  # SQL 로깅 비활성화 (메모리 절약)
+        )
         self.SessionLocal = sessionmaker(
             autocommit=False, autoflush=False, bind=self.engine
         )

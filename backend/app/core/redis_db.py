@@ -11,10 +11,21 @@ class RedisDatabase:
         self._client: Optional[aioredis.Redis] = None
 
     async def get_client(self) -> aioredis.Redis:
-        """Returns async Redis client"""
+        """Returns async Redis client with optimized connection pool"""
         if self._client is None:
             self._client = await aioredis.from_url(
-                self.redis_url, decode_responses=True, max_connections=10
+                self.redis_url,
+                decode_responses=True,
+                max_connections=10,
+                # 연결 풀 최적화 (메모리 누수 방지)
+                health_check_interval=30,  # 30초마다 연결 상태 확인
+                socket_keepalive=True,  # TCP keepalive 활성화
+                socket_keepalive_options={
+                    1: 1,  # TCP_KEEPIDLE: 1초
+                    2: 1,  # TCP_KEEPINTVL: 1초
+                    3: 3,  # TCP_KEEPCNT: 3회
+                },
+                retry_on_timeout=True,  # 타임아웃 시 재시도
             )
         return self._client
 

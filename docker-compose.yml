@@ -8,6 +8,13 @@ services:
     container_name: yamyam-backend
     ports:
       - "8000:8000"
+    # 메모리 제한 설정 (메모리 누수 방지)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
     environment:
       # 데이터베이스 설정
       DATABASE_URL: postgresql://yamyam:yamyam_pass@postgres:5432/yamyamdb
@@ -70,6 +77,15 @@ services:
     container_name: yamyam-redis
     ports:
       - "6379:6379"
+    # 메모리 제한 설정
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    # Redis 메모리 정책 설정 (메모리 부족 시 오래된 키 자동 삭제)
+    command: redis-server --maxmemory 768m --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

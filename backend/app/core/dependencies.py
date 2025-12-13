@@ -1,12 +1,15 @@
 """
 인증 의존성 (Firebase + JWT)
+데이터베이스 세션 의존성
 """
 
-from typing import Optional
+from typing import Generator, Optional
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
+from app.core.db import db
 from app.core.firebase_auth import get_current_user, get_user_uid
 from app.schemas.token import TokenPayload
 from app.services.token_service import token_service
@@ -117,3 +120,20 @@ def get_optional_user_from_token(
         return token_service.verify_access_token(credentials.credentials)
     except HTTPException:
         return None
+
+
+# ============================================
+# 데이터베이스 세션 의존성
+# ============================================
+
+
+def get_db() -> Generator[Session, None, None]:
+    """
+    데이터베이스 세션 의존성
+    요청 종료 시 자동으로 세션을 닫아 메모리 누수 방지
+    """
+    session = db.get_session()
+    try:
+        yield session
+    finally:
+        session.close()
