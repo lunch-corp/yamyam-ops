@@ -34,5 +34,5 @@ repos:
       description: Checks for common misspellings in text files.
       language: python
       types: [text]
-      exclude: "(uv.lock|README.md)"
+      exclude: '(uv.lock|README.md|.*\.conf)'
       args: ['--ignore-words-list=nin']

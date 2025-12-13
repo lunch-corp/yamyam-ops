@@ -2,8 +2,6 @@
 Token 관련 스키마
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -41,10 +39,10 @@ class TokenPayload(BaseModel):
 
     user_id: str = Field(..., description="사용자 ID (ULID)")
     firebase_uid: str = Field(..., description="Firebase UID")
-    email: Optional[str] = Field(None, description="이메일")
-    exp: Optional[int] = Field(None, description="만료 시간 (Unix timestamp)")
-    iat: Optional[int] = Field(None, description="발급 시간 (Unix timestamp)")
-    type: Optional[str] = Field(None, description="토큰 타입 (access/refresh)")
+    email: str | None = Field(None, description="이메일")
+    exp: int | None = Field(None, description="만료 시간 (Unix timestamp)")
+    iat: int | None = Field(None, description="발급 시간 (Unix timestamp)")
+    type: str | None = Field(None, description="토큰 타입 (access/refresh)")
 
 
 class TokenVerifyRequest(BaseModel):
@@ -57,5 +55,5 @@ class TokenVerifyResponse(BaseModel):
     """토큰 검증 응답 스키마"""
 
     valid: bool = Field(..., description="토큰 유효성")
-    payload: Optional[TokenPayload] = Field(None, description="토큰 페이로드")
-    message: Optional[str] = Field(None, description="메시지")
+    payload: TokenPayload | None = Field(None, description="토큰 페이로드")
+    message: str | None = Field(None, description="메시지")

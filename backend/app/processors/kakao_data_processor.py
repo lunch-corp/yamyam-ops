@@ -3,9 +3,11 @@ Kakao 데이터 처리 전용 클래스 - 설정 기반 처리
 """
 
 import ast
-from typing import Callable, Dict, List, Tuple
+from collections.abc import Callable
 
 import pandas as pd
+
+from app.utils.ulid_utils import generate_ulid
 
 
 class KakaoDataProcessor:
@@ -32,6 +34,7 @@ class KakaoDataProcessor:
                 "diner_open_time",
             ],
             "field_mappings": [
+                ("id", "ulid"),
                 ("diner_idx", "int"),
                 ("diner_name", "str"),
                 ("diner_tag", "list_to_comma"),
@@ -47,8 +50,12 @@ class KakaoDataProcessor:
                 ("diner_lat", "float"),
                 ("diner_lon", "float"),
                 ("diner_open_time", "str"),
+                ("diner_grade", "int_nullable"),
+                ("hidden_score", "float_nullable"),
+                ("bayesian_score", "float_nullable"),
             ],
             "sql_fields": [
+                "id",
                 "diner_idx",
                 "diner_name",
                 "diner_tag",
@@ -64,6 +71,9 @@ class KakaoDataProcessor:
                 "diner_lat",
                 "diner_lon",
                 "diner_open_time",
+                "diner_grade",
+                "hidden_score",
+                "bayesian_score",
             ],
             "query_name": "INSERT_KAKAO_DINER_BASIC",
         },
@@ -132,6 +142,90 @@ class KakaoDataProcessor:
             "sql_fields": ["diner_tag", "diner_review_tags", "diner_idx"],
             "query_name": "UPDATE_KAKAO_DINER_TAGS",
         },
+        "reviewers": {
+            "required_columns": [
+                "reviewer_id",
+                "reviewer_review_cnt",
+                "reviewer_avg",
+                "badge_grade",
+                "badge_level",
+            ],
+            "field_mappings": [
+                ("reviewer_id", "int"),
+                ("reviewer_user_name", "str"),
+                ("reviewer_review_cnt", "int"),
+                ("reviewer_avg", "float"),
+                ("badge_grade", "str"),
+                ("badge_level", "int"),
+            ],
+            "sql_fields": [
+                "reviewer_id",
+                "reviewer_user_name",
+                "reviewer_review_cnt",
+                "reviewer_avg",
+                "badge_grade",
+                "badge_level",
+            ],
+            "query_name": "INSERT_KAKAO_REVIEWER",
+        },
+        "reviews": {
+            "required_columns": [
+                "diner_idx",
+                "reviewer_id",
+                "review_id",
+                "reviewer_review_score",
+            ],
+            "field_mappings": [
+                ("diner_idx", "int"),
+                ("reviewer_id", "int"),
+                ("review_id", "int"),
+                ("reviewer_review", "str_optional"),
+                ("reviewer_review_date", "date_str"),
+                ("reviewer_review_score", "float"),
+            ],
+            "sql_fields": [
+                "diner_idx",
+                "reviewer_id",
+                "review_id",
+                "reviewer_review",
+                "reviewer_review_date",
+                "reviewer_review_score",
+            ],
+            "query_name": "INSERT_KAKAO_REVIEW",
+        },
+        "diner_grade_bayesian": {
+            "required_columns": [
+                "diner_idx",
+                "diner_grade",
+                "bayesian_score",
+            ],
+            "field_mappings": [
+                ("diner_grade", "int"),
+                ("bayesian_score", "float"),
+                ("diner_idx", "int"),
+            ],
+            "sql_fields": [
+                "diner_grade",
+                "bayesian_score",
+                "diner_idx",
+            ],
+            "query_name": "UPDATE_KAKAO_DINER_GRADE_BAYESIAN",
+        },
+        "diner_hidden_score": {
+            "required_columns": [
+                "diner_idx",
+                "hidden_score",
+            ],
+            "field_mappings": [
+                ("hidden_score", "float"),
+                ("diner_idx", "int"),
+            ],
+            "sql_fields": [
+                "hidden_score",
+                "diner_idx",
+            ],
+            "query_name": "UPDATE_KAKAO_DINER_HIDDEN_SCORE",
+        },
     }
 
     # 데이터 타입 변환 함수들
@@ -165,27 +259,54 @@ class KakaoDataProcessor:
             # 파싱 실패 시 원본 반환
             return x_str
 
+    # PostgreSQL INTEGER 범위: -2,147,483,648 ~ 2,147,483,647
+    INTEGER_MIN = -2147483648
+    INTEGER_MAX = 2147483647
+
+    @staticmethod
+    def _validate_integer_range(value, field_name: str = None):
+        """정수 값이 PostgreSQL INTEGER 범위 내인지 검증"""
+        if value is None:
+            return value
+
+        if (
+            value < KakaoDataProcessor.INTEGER_MIN
+            or value > KakaoDataProcessor.INTEGER_MAX
+        ):
+            field_info = f" ({field_name})" if field_name else ""
+            raise ValueError(
+                f"정수 값이 INTEGER 범위를 초과합니다{field_info}: "
+                f"{value} (범위: {KakaoDataProcessor.INTEGER_MIN} ~ {KakaoDataProcessor.INTEGER_MAX})"
+            )
+        return value
+
     TYPE_CONVERTERS = {
         "str": lambda x: str(x) if pd.notnull(x) else None,
+        "str_optional": lambda x: str(x) if pd.notnull(x) and str(x).strip() else None,
         "int": lambda x: int(x) if pd.notnull(x) else None,
+        "int_nullable": lambda x: int(x) if pd.notnull(x) else None,
         "float": lambda x: float(x) if pd.notnull(x) else None,
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
         "float_default_zero": lambda x: float(x) if pd.notnull(x) else 0.0,
+        "date_str": lambda x: str(x).strip()
+        if pd.notnull(x) and str(x).strip()
+        else None,
         "list_to_comma": lambda x: KakaoDataProcessor.convert_list_string_to_comma_separated(
             x
         ),
+        "ulid": lambda x: generate_ulid(),  # ULID는 항상 새로 생성 (입력값 무시)
     }
 
     @classmethod
-    def get_required_columns(cls, file_type: str) -> List[str]:
+    def get_required_columns(cls, file_type: str) -> list[str]:
         """파일 타입별 필수 컬럼 반환"""
         if file_type not in cls.PROCESSING_CONFIG:
             raise ValueError(f"지원하지 않는 파일 타입: {file_type}")
         return cls.PROCESSING_CONFIG[file_type]["required_columns"]
 
     @classmethod
-    def get_sql_fields(cls, file_type: str) -> List[str]:
+    def get_sql_fields(cls, file_type: str) -> list[str]:
         """파일 타입별 SQL 필드 반환"""
         if file_type not in cls.PROCESSING_CONFIG:
             raise ValueError(f"지원하지 않는 파일 타입: {file_type}")
@@ -276,7 +397,7 @@ class KakaoDataProcessor:
             raise ValueError(f"지원하지 않는 작업 타입: {operation}")
 
     @classmethod
-    def validate_config_consistency(cls, file_type: str) -> Dict[str, bool]:
+    def validate_config_consistency(cls, file_type: str) -> dict[str, bool]:
         """
         설정의 일관성 검증
 
@@ -315,7 +436,7 @@ class KakaoDataProcessor:
         return {"valid": True, "message": "설정이 일관성 있게 구성됨"}
 
     @classmethod
-    def process_file(cls, file_type: str, df: pd.DataFrame) -> List[Tuple]:
+    def process_file(cls, file_type: str, df: pd.DataFrame) -> list[tuple]:
         """
         설정 기반 파일 처리
 
@@ -331,21 +452,60 @@ class KakaoDataProcessor:
 
         config = cls.PROCESSING_CONFIG[file_type]
         field_mappings = config["field_mappings"]
+        required_columns = config.get("required_columns", [])
 
         data = []
-        for _, row in df.iterrows():
+        for row_idx, (_, row) in enumerate(df.iterrows()):
             processed_row = []
 
             for field_name, data_type in field_mappings:
-                if field_name not in row:
-                    raise ValueError(f"컬럼 '{field_name}'이 DataFrame에 없습니다")
-
                 converter = cls.TYPE_CONVERTERS.get(data_type)
                 if not converter:
                     raise ValueError(f"지원하지 않는 데이터 타입: {data_type}")
 
-                processed_value = converter(row[field_name])
-                processed_row.append(processed_value)
+                # ulid 타입은 필드가 없어도 변환기 호출 (항상 새로 생성)
+                if data_type == "ulid":
+                    try:
+                        processed_value = converter(None)  # ulid는 입력값 무시
+                        processed_row.append(processed_value)
+                        continue
+                    except Exception as e:
+                        original_row_idx = (
+                            df.index[row_idx]
+                            if hasattr(df.index, "__getitem__")
+                            else row_idx
+                        )
+                        raise ValueError(
+                            f"행 {original_row_idx}, 필드 '{field_name}' (ULID 생성) 처리 실패: {str(e)}"
+                        ) from e
+
+                # 필수 컬럼이 아닌 경우, CSV에 없으면 None 반환
+                if field_name not in row:
+                    if field_name in required_columns:
+                        raise ValueError(
+                            f"필수 컬럼 '{field_name}'이 DataFrame에 없습니다"
+                        )
+                    else:
+                        # 선택 필드인 경우 None 반환
+                        processed_row.append(None)
+                        continue
+
+                try:
+                    processed_value = converter(row[field_name])
+                    # INTEGER 타입인 경우 범위 검증 (BigInteger로 변경했지만 혹시 모를 경우 대비)
+                    # 실제로는 모델이 BigInteger이므로 검증은 선택사항
+                    processed_row.append(processed_value)
+                except (ValueError, OverflowError) as e:
+                    # 원본 행 인덱스 포함하여 오류 메시지 개선
+                    original_row_idx = (
+                        df.index[row_idx]
+                        if hasattr(df.index, "__getitem__")
+                        else row_idx
+                    )
+                    raise ValueError(
+                        f"행 {original_row_idx}, 필드 '{field_name}' 처리 실패: {str(e)}\n"
+                        f"원본 값: {row[field_name]}"
+                    ) from e
 
             data.append(tuple(processed_row))
 
@@ -353,27 +513,27 @@ class KakaoDataProcessor:
 
     # 기존 메서드들을 새로운 구조로 래핑 (하위 호환성 유지)
     @classmethod
-    def process_diner_basic(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_basic(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_basic.csv 데이터 처리"""
         return cls.process_file("diner_basic", df)
 
     @classmethod
-    def process_diner_categories(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_categories(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_categories.csv 데이터 처리"""
         return cls.process_file("diner_categories", df)
 
     @classmethod
-    def process_diner_menus(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_menus(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_menus.csv 데이터 처리"""
         return cls.process_file("diner_menus", df)
 
     @classmethod
-    def process_diner_reviews(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_reviews(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_reviews.csv 데이터 처리"""
         return cls.process_file("diner_reviews", df)
 
     @classmethod
-    def process_diner_tags(cls, df: pd.DataFrame) -> List[Tuple]:
+    def process_diner_tags(cls, df: pd.DataFrame) -> list[tuple]:
         """diner_tags.csv 데이터 처리"""
         return cls.process_file("diner_tags", df)
 
@@ -381,8 +541,8 @@ class KakaoDataProcessor:
     def add_new_file_type(
         cls,
         file_type: str,
-        required_columns: List[str],
-        field_mappings: List[Tuple[str, str]],
+        required_columns: list[str],
+        field_mappings: list[tuple[str, str]],
     ) -> None:
         """
         새로운 파일 타입 추가

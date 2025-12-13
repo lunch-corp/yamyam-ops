@@ -1,14 +1,14 @@
 import logging
-from typing import Optional
 
 import redis.asyncio as aioredis
+
 from app.core.config import settings
 
 
 class RedisDatabase:
     def __init__(self):
         self.redis_url = settings.redis_url
-        self._client: Optional[aioredis.Redis] = None
+        self._client: aioredis.Redis = None
 
     async def get_client(self) -> aioredis.Redis:
         """Returns async Redis client with optimized connection pool"""
@@ -45,5 +45,5 @@ class RedisDatabase:
             self._client = None
 
 
-# Global Redis instance
+# global redis instance
 redis_db = RedisDatabase()

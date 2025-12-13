@@ -1,5 +1,6 @@
 # 모델 패키지
 
+from .activity_log import UserActivityLog
 from .base import Base, ULIDMixin
 from .item import Item
 from .kakao_diner import KakaoDiner
@@ -20,4 +21,5 @@ __all__ = [
     "KakaoDiner",
     "KakaoReviewer",
     "KakaoReview",
+    "UserActivityLog",
 ]

@@ -3,13 +3,13 @@ JWT 토큰 생성 및 검증 유틸리티
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
 
-from app.core.config import settings
 from jose import JWTError, jwt
 
+from app.core.config import settings
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Access Token 생성
 
@@ -38,7 +38,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Refresh Token 생성
 
@@ -65,7 +65,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     return encoded_jwt
 
 
-def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
+def verify_token(token: str, token_type: str = "access") -> dict | None:
     """
     JWT 토큰 검증
 
@@ -91,7 +91,7 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
         return None
 
 
-def decode_token(token: str) -> Optional[dict]:
+def decode_token(token: str) -> dict | None:
     """
     JWT 토큰 디코딩 (검증 없이)
 
@@ -114,7 +114,7 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-def get_token_expiry(token: str) -> Optional[datetime]:
+def get_token_expiry(token: str) -> datetime | None:
     """
     토큰 만료 시간 조회
 
