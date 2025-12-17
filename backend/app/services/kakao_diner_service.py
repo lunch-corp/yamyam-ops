@@ -4,8 +4,12 @@
 
 import logging
 import random
+import re
 
+import pandas as pd
 from fastapi import HTTPException, status
+from fuzzywuzzy import fuzz
+from jamo import hangul_to_jamo
 
 from app.core.db import db
 from app.database.kakao_queries import (
@@ -20,6 +24,7 @@ from app.schemas.kakao_diner import (
     KakaoDinerCreate,
     KakaoDinerResponse,
     KakaoDinerUpdate,
+    SearchDinerResponse,
 )
 from app.services.base_service import BaseService
 
@@ -136,10 +141,10 @@ class KakaoDinerService(
         self,
         limit: int | None = None,
         offset: int | None = None,
-        diner_category_large: str | None = None,
-        diner_category_middle: str | None = None,
-        diner_category_small: str | None = None,
-        diner_category_detail: str | None = None,
+        diner_category_large: list[str] | None = None,
+        diner_category_middle: list[str] | None = None,
+        diner_category_small: list[str] | None = None,
+        diner_category_detail: list[str] | None = None,
         min_rating: float | None = None,
         user_lat: float | None = None,
         user_lon: float | None = None,
@@ -152,10 +157,10 @@ class KakaoDinerService(
         Args:
             limit: 반환할 최대 레코드 수 (top-k, n이 None일 때만 적용)
             offset: 페이지네이션 오프셋 (None이면 0으로 처리)
-            diner_category_large: 대분류 카테고리 필터
-            diner_category_middle: 중분류 카테고리 필터
-            diner_category_small: 소분류 카테고리 필터
-            diner_category_detail: 세부 카테고리 필터
+            diner_category_large: 대분류 카테고리 필터 (여러 개 가능)
+            diner_category_middle: 중분류 카테고리 필터 (여러 개 가능)
+            diner_category_small: 소분류 카테고리 필터 (여러 개 가능)
+            diner_category_detail: 세부 카테고리 필터 (여러 개 가능)
             min_rating: 최소 평점 필터
             user_lat: 사용자 위도 (거리 필터용)
             user_lon: 사용자 경도 (거리 필터용)
@@ -182,19 +187,23 @@ class KakaoDinerService(
         conditions = []
         params = []
 
-        # 카테고리 필터 (정확한 매칭으로 인덱스 활용)
+        # 카테고리 필터 (IN 절 사용하여 여러 값 필터링)
         if diner_category_large:
-            conditions.append("diner_category_large = %s")
-            params.append(diner_category_large)
+            placeholders = ", ".join(["%s"] * len(diner_category_large))
+            conditions.append(f"diner_category_large IN ({placeholders})")
+            params.extend(diner_category_large)
         if diner_category_middle:
-            conditions.append("diner_category_middle = %s")
-            params.append(diner_category_middle)
+            placeholders = ", ".join(["%s"] * len(diner_category_middle))
+            conditions.append(f"diner_category_middle IN ({placeholders})")
+            params.extend(diner_category_middle)
         if diner_category_small:
-            conditions.append("diner_category_small = %s")
-            params.append(diner_category_small)
+            placeholders = ", ".join(["%s"] * len(diner_category_small))
+            conditions.append(f"diner_category_small IN ({placeholders})")
+            params.extend(diner_category_small)
         if diner_category_detail:
-            conditions.append("diner_category_detail = %s")
-            params.append(diner_category_detail)
+            placeholders = ", ".join(["%s"] * len(diner_category_detail))
+            conditions.append(f"diner_category_detail IN ({placeholders})")
+            params.extend(diner_category_detail)
 
         # 평점 필터
         if min_rating is not None:
@@ -382,10 +391,10 @@ class KakaoDinerService(
         self,
         limit: int | None = None,
         offset: int | None = None,
-        diner_category_large: str | None = None,
-        diner_category_middle: str | None = None,
-        diner_category_small: str | None = None,
-        diner_category_detail: str | None = None,
+        diner_category_large: list[str] | None = None,
+        diner_category_middle: list[str] | None = None,
+        diner_category_small: list[str] | None = None,
+        diner_category_detail: list[str] | None = None,
         min_rating: float | None = None,
         user_lat: float | None = None,
         user_lon: float | None = None,
@@ -400,10 +409,10 @@ class KakaoDinerService(
         Args:
             limit: 반환할 최대 레코드 수 (top-k)
             offset: 페이지네이션 오프셋 (None이면 0으로 처리)
-            diner_category_large: 대분류 카테고리 필터 (기본 필터)
-            diner_category_middle: 중분류 카테고리 필터 (기본 필터)
-            diner_category_small: 소분류 카테고리 필터 (기본 필터)
-            diner_category_detail: 세부 카테고리 필터 (기본 필터)
+            diner_category_large: 대분류 카테고리 필터 (기본 필터, 여러 개 가능)
+            diner_category_middle: 중분류 카테고리 필터 (기본 필터, 여러 개 가능)
+            diner_category_small: 소분류 카테고리 필터 (기본 필터, 여러 개 가능)
+            diner_category_detail: 세부 카테고리 필터 (기본 필터, 여러 개 가능)
             min_rating: 최소 평점 필터
             user_lat: 사용자 위도 (거리 필터 및 정렬용)
             user_lon: 사용자 경도 (거리 필터 및 정렬용)
@@ -455,19 +464,23 @@ class KakaoDinerService(
         conditions = []
         params = []
 
-        # 카테고리 필터 (정확한 매칭으로 인덱스 활용)
+        # 카테고리 필터 (IN 절 사용하여 여러 값 필터링)
         if diner_category_large:
-            conditions.append("diner_category_large = %s")
-            params.append(diner_category_large)
+            placeholders = ", ".join(["%s"] * len(diner_category_large))
+            conditions.append(f"diner_category_large IN ({placeholders})")
+            params.extend(diner_category_large)
         if diner_category_middle:
-            conditions.append("diner_category_middle = %s")
-            params.append(diner_category_middle)
+            placeholders = ", ".join(["%s"] * len(diner_category_middle))
+            conditions.append(f"diner_category_middle IN ({placeholders})")
+            params.extend(diner_category_middle)
         if diner_category_small:
-            conditions.append("diner_category_small = %s")
-            params.append(diner_category_small)
+            placeholders = ", ".join(["%s"] * len(diner_category_small))
+            conditions.append(f"diner_category_small IN ({placeholders})")
+            params.extend(diner_category_small)
         if diner_category_detail:
-            conditions.append("diner_category_detail = %s")
-            params.append(diner_category_detail)
+            placeholders = ", ".join(["%s"] * len(diner_category_detail))
+            conditions.append(f"diner_category_detail IN ({placeholders})")
+            params.extend(diner_category_detail)
 
         # 평점 필터
         if min_rating is not None:
@@ -536,7 +549,7 @@ class KakaoDinerService(
         return (
             [self._convert_to_response(row) for row in results]
             if not use_dataframe
-            else results
+            else pd.DataFrame(results)
         )
 
     def update(self, diner_idx: int, data: KakaoDinerUpdate) -> KakaoDinerResponse:
@@ -582,6 +595,159 @@ class KakaoDinerService(
             )
 
         return {"message": "Kakao diner deleted successfully"}
+
+    def search_diners(
+        self,
+        query: str,
+        limit: int = 10,
+        user_lat: float | None = None,
+        user_lon: float | None = None,
+        radius_km: float | None = None,
+    ) -> list[SearchDinerResponse]:
+        """
+        음식점 이름으로 검색 (정확한 매칭, 부분 매칭, 자모 매칭)
+
+        Args:
+            query: 검색어
+            limit: 반환할 최대 결과 수
+            user_lat: 사용자 위도 (거리 계산용)
+            user_lon: 사용자 경도 (거리 계산용)
+            radius_km: 검색 반경 (km)
+
+        Returns:
+            검색 결과 리스트 (정확한 매칭 > 부분 매칭 > 자모 매칭 순)
+        """
+        # 검색어 정규화
+        norm_query = self._normalize_text(query)
+
+        # 거리 계산 필드
+        distance_field = ""
+        if user_lat is not None and user_lon is not None:
+            distance_field = f", ST_Distance(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography) / 1000 AS distance"
+        else:
+            distance_field = ", 0.0 AS distance"
+
+        # 거리 필터 조건
+        radius_condition = ""
+        if user_lat is not None and user_lon is not None and radius_km is not None:
+            radius_condition = f" AND ST_DWithin(ST_SetSRID(ST_MakePoint(diner_lon, diner_lat), 4326)::geography, ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography, {radius_km * 1000})"
+
+        # 1. 정확한 매칭
+        exact_query = f"""
+            SELECT id, diner_idx, diner_name, diner_num_address{distance_field}
+            FROM kakao_diner
+            WHERE LOWER(REGEXP_REPLACE(diner_name, '[^가-힣a-zA-Z0-9]', '', 'g')) = %s{radius_condition}
+            ORDER BY distance ASC
+            LIMIT %s
+        """
+        exact_results = self._execute_query_all(exact_query, (norm_query, limit))
+
+        if exact_results:
+            return [
+                SearchDinerResponse(
+                    id=row["id"],
+                    diner_idx=row["diner_idx"],
+                    diner_name=row["diner_name"],
+                    match_type="정확한 매칭",
+                    jamo_score=1.0,
+                    distance=float(row.get("distance", 0.0))
+                    if row.get("distance")
+                    else None,
+                    diner_num_address=row.get("diner_num_address"),
+                )
+                for row in exact_results
+            ]
+
+        # 2. 부분 매칭
+        partial_query = f"""
+            SELECT id, diner_idx, diner_name, diner_num_address{distance_field}
+            FROM kakao_diner
+            WHERE LOWER(REGEXP_REPLACE(diner_name, '[^가-힣a-zA-Z0-9]', '', 'g')) LIKE %s{radius_condition}
+            ORDER BY distance ASC
+            LIMIT %s
+        """
+        partial_results = self._execute_query_all(
+            partial_query, (f"%{norm_query}%", limit)
+        )
+
+        if partial_results:
+            return [
+                SearchDinerResponse(
+                    id=row["id"],
+                    diner_idx=row["diner_idx"],
+                    diner_name=row["diner_name"],
+                    match_type="부분 매칭",
+                    jamo_score=0.8,
+                    distance=float(row.get("distance", 0.0))
+                    if row.get("distance")
+                    else None,
+                    diner_num_address=row.get("diner_num_address"),
+                )
+                for row in partial_results
+            ]
+
+        # 3. 자모 매칭 (Python에서 처리)
+        # 먼저 모든 음식점을 가져와서 자모 유사도 계산
+        jamo_query = f"""
+            SELECT id, diner_idx, diner_name, diner_num_address{distance_field}
+            FROM kakao_diner
+            WHERE 1=1{radius_condition}
+            LIMIT 1000
+        """
+        all_results = self._execute_query_all(jamo_query, ())
+
+        if not all_results:
+            return []
+
+        # 자모 유사도 계산
+        jamo_candidates = []
+        query_jamo = " ".join(hangul_to_jamo(norm_query))
+
+        for row in all_results:
+            diner_name = row["diner_name"]
+            norm_name = self._normalize_text(diner_name)
+            name_jamo = " ".join(hangul_to_jamo(norm_name))
+
+            # 자모 유사도 계산
+            jamo_score = fuzz.ratio(query_jamo, name_jamo) / 100.0
+
+            if jamo_score >= 0.7:  # 임계값
+                jamo_candidates.append(
+                    {
+                        "id": row["id"],
+                        "diner_idx": row["diner_idx"],
+                        "diner_name": diner_name,
+                        "diner_num_address": row.get("diner_num_address"),
+                        "jamo_score": jamo_score,
+                        "distance": float(row.get("distance", 0.0))
+                        if row.get("distance")
+                        else None,
+                    }
+                )
+
+        # 점수 순으로 정렬하고 limit만큼 반환
+        jamo_candidates.sort(key=lambda x: x["jamo_score"], reverse=True)
+        jamo_candidates = jamo_candidates[:limit]
+
+        if jamo_candidates:
+            return [
+                SearchDinerResponse(
+                    id=item["id"],
+                    diner_idx=item["diner_idx"],
+                    diner_name=item["diner_name"],
+                    match_type="자모 매칭",
+                    jamo_score=item["jamo_score"],
+                    distance=item["distance"],
+                    diner_num_address=item.get("diner_num_address"),
+                )
+                for item in jamo_candidates
+            ]
+
+        return []
+
+    def _normalize_text(self, text: str) -> str:
+        """텍스트를 정규화합니다 (한글, 영문, 숫자만 남김)"""
+        return re.sub(r"[^가-힣a-zA-Z0-9]", "", text.lower().strip())
 
     def _convert_to_response(self, row: dict) -> KakaoDinerResponse:
         """데이터베이스 행을 응답 모델로 변환"""

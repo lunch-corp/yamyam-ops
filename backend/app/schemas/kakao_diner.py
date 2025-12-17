@@ -111,3 +111,17 @@ class KakaoDinerResponse(BaseModel):
     distance: float | None = Field(None, description="사용자 위치로부터의 거리 (km)")
     crawled_at: str
     updated_at: str
+
+
+class SearchDinerResponse(BaseModel):
+    """음식점 검색 결과 응답 스키마"""
+
+    id: str = Field(..., description="음식점 ULID")
+    diner_idx: int = Field(..., description="카카오 음식점 고유 인덱스")
+    diner_name: str = Field(..., description="음식점 이름")
+    match_type: str = Field(
+        ..., description="매칭 타입 (정확한 매칭, 부분 매칭, 자모 매칭)"
+    )
+    jamo_score: float | None = Field(None, description="자모 매칭 점수 (0.0-1.0)")
+    distance: float | None = Field(None, description="사용자 위치로부터의 거리 (km)")
+    diner_num_address: str | None = Field(None, description="지번 주소")

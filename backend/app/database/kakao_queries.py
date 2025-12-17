@@ -108,6 +108,7 @@ GET_KAKAO_DINER_BY_IDX = """
            diner_road_address, diner_num_address, diner_phone,
            diner_lat, diner_lon, diner_open_time,
            diner_grade, hidden_score, bayesian_score,
+           diner_category_large, diner_category_middle, diner_category_small, diner_category_detail,
            crawled_at, updated_at
     FROM kakao_diner WHERE diner_idx = %s
 """
@@ -177,10 +178,10 @@ DELETE_ALL_KAKAO_DINERS = """
 # 카카오 리뷰어 생성
 INSERT_KAKAO_REVIEWER = """
     INSERT INTO kakao_reviewer (
-        reviewer_id, reviewer_user_name,
+        id, reviewer_id, reviewer_user_name,
         reviewer_review_cnt, reviewer_avg, badge_grade, badge_level
     )
-    VALUES (%s, %s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (reviewer_id) DO UPDATE SET
         reviewer_user_name = EXCLUDED.reviewer_user_name,
         reviewer_review_cnt = EXCLUDED.reviewer_review_cnt,
@@ -258,10 +259,10 @@ GET_TOP_REVIEWERS = """
 # 카카오 리뷰 생성
 INSERT_KAKAO_REVIEW = """
     INSERT INTO kakao_review (
-        diner_idx, reviewer_id, review_id,
+        id, diner_idx, reviewer_id, review_id,
         reviewer_review, reviewer_review_date, reviewer_review_score
     )
-    VALUES (%s, %s, %s, %s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (review_id) DO UPDATE SET
         diner_idx = EXCLUDED.diner_idx,
         reviewer_id = EXCLUDED.reviewer_id,

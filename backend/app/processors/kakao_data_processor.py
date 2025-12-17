@@ -151,6 +151,7 @@ class KakaoDataProcessor:
                 "badge_level",
             ],
             "field_mappings": [
+                ("id", "ulid"),
                 ("reviewer_id", "int"),
                 ("reviewer_user_name", "str"),
                 ("reviewer_review_cnt", "int"),
@@ -159,6 +160,7 @@ class KakaoDataProcessor:
                 ("badge_level", "int"),
             ],
             "sql_fields": [
+                "id",
                 "reviewer_id",
                 "reviewer_user_name",
                 "reviewer_review_cnt",
@@ -176,6 +178,7 @@ class KakaoDataProcessor:
                 "reviewer_review_score",
             ],
             "field_mappings": [
+                ("id", "ulid"),
                 ("diner_idx", "int"),
                 ("reviewer_id", "int"),
                 ("review_id", "int"),
@@ -184,6 +187,7 @@ class KakaoDataProcessor:
                 ("reviewer_review_score", "float"),
             ],
             "sql_fields": [
+                "id",
                 "diner_idx",
                 "reviewer_id",
                 "review_id",

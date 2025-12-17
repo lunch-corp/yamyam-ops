@@ -21,7 +21,9 @@ dependencies = [
     "python-ulid==3.1.0",
     "faiss-cpu==1.7.4",
     "paramiko==3.4.0",
+    "fuzzywuzzy>=0.18.0",
     "yamyam-lab @ git+https://github.com/lunch-corp/yamyam-lab.git@v1.0.6",
+    "jamo==0.4.1",
 ]
 
 

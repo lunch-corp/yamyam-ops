@@ -89,7 +89,7 @@ class UploadService:
 
                 # 데이터 처리 검증
                 validation_errors = []
-                for batch in FileProcessor.batch_data(df, batch_size=1000):
+                for batch in FileProcessor.batch_data(df, batch_size=10000):
                     try:
                         batch_data = KakaoDataProcessor.process_file(file_type, batch)
                         logger.info(f"[DRY RUN] 배치 처리 성공: {len(batch_data)}개")
@@ -114,7 +114,7 @@ class UploadService:
 
             with db.get_cursor() as (cursor, conn):
                 batch_num = 0
-                for batch in FileProcessor.batch_data(df, batch_size=1000):
+                for batch in FileProcessor.batch_data(df, batch_size=10000):
                     batch_num += 1
                     batch_data = KakaoDataProcessor.process_file(file_type, batch)
 

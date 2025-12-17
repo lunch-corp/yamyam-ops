@@ -8,6 +8,7 @@ from app.schemas.kakao_diner import (
     KakaoDinerResponse,
     KakaoDinerSortRequest,
     KakaoDinerUpdate,
+    SearchDinerResponse,
 )
 from app.services.kakao_diner_service import KakaoDinerService
 
@@ -46,10 +47,18 @@ def filter_restaurants(
         description="반환할 최대 레코드 수 (top-k), None이면 전체 반환",
     ),
     offset: int | None = Query(None, ge=0, description="페이지네이션 오프셋"),
-    diner_category_large: str | None = Query(None, description="대분류 카테고리"),
-    diner_category_middle: str | None = Query(None, description="중분류 카테고리"),
-    diner_category_small: str | None = Query(None, description="소분류 카테고리"),
-    diner_category_detail: str | None = Query(None, description="세부 카테고리"),
+    diner_category_large: list[str] | None = Query(
+        None, description="대분류 카테고리 (여러 개 가능)"
+    ),
+    diner_category_middle: list[str] | None = Query(
+        None, description="중분류 카테고리 (여러 개 가능)"
+    ),
+    diner_category_small: list[str] | None = Query(
+        None, description="소분류 카테고리 (여러 개 가능)"
+    ),
+    diner_category_detail: list[str] | None = Query(
+        None, description="세부 카테고리 (여러 개 가능)"
+    ),
     min_rating: float | None = Query(None, ge=0, le=5, description="최소 평점"),
     user_lat: float | None = Query(
         None, ge=-90, le=90, description="사용자 위도 (거리 필터용)"
@@ -150,10 +159,18 @@ def list_restaurants(
         description="반환할 최대 레코드 수 (top-k), None이면 전체 반환",
     ),
     offset: int | None = Query(None, ge=0, description="페이지네이션 오프셋"),
-    diner_category_large: str | None = Query(None, description="대분류 카테고리"),
-    diner_category_middle: str | None = Query(None, description="중분류 카테고리"),
-    diner_category_small: str | None = Query(None, description="소분류 카테고리"),
-    diner_category_detail: str | None = Query(None, description="세부 카테고리"),
+    diner_category_large: list[str] | None = Query(
+        None, description="대분류 카테고리 (여러 개 가능)"
+    ),
+    diner_category_middle: list[str] | None = Query(
+        None, description="중분류 카테고리 (여러 개 가능)"
+    ),
+    diner_category_small: list[str] | None = Query(
+        None, description="소분류 카테고리 (여러 개 가능)"
+    ),
+    diner_category_detail: list[str] | None = Query(
+        None, description="세부 카테고리 (여러 개 가능)"
+    ),
     min_rating: float | None = Query(None, ge=0, le=5, description="최소 평점"),
     user_lat: float | None = Query(
         None, ge=-90, le=90, description="사용자 위도 (거리 필터 및 정렬용)"
@@ -209,6 +226,47 @@ def list_restaurants(
         radius_km=radius_km,
         user_id=user_id,
         sort_by=sort_by,
+    )
+
+
+@router.get(
+    "/search",
+    response_model=list[SearchDinerResponse],
+    tags=["kakao-restaurants"],
+    summary="카카오 음식점 검색",
+)
+def search_restaurants(
+    query: str = Query(..., min_length=2, description="검색어 (최소 2자)"),
+    limit: int = Query(10, ge=1, le=100, description="반환할 최대 결과 수"),
+    user_lat: float | None = Query(
+        None, ge=-90, le=90, description="사용자 위도 (거리 계산용)"
+    ),
+    user_lon: float | None = Query(
+        None, ge=-180, le=180, description="사용자 경도 (거리 계산용)"
+    ),
+    radius_km: float | None = Query(None, gt=0, description="검색 반경 (km)"),
+):
+    """
+    카카오 음식점 검색 (이름 기반)
+
+    **검색 방식:**
+    - 정확한 매칭: 검색어와 정확히 일치하는 음식점
+    - 부분 매칭: 검색어가 음식점 이름에 포함된 경우
+    - 자모 매칭: 한글 자모 단위로 유사도 계산 (정확한 매칭/부분 매칭이 없을 때)
+
+    **필터링:**
+    - radius_km이 지정되면 user_lat, user_lon 기준 반경 내 음식점만 검색
+
+    **정렬:**
+    - 정확한 매칭 > 부분 매칭 > 자모 매칭 순
+    - 같은 매칭 타입 내에서는 거리순 (거리 정보가 있는 경우)
+    """
+    return diner_service.search_diners(
+        query=query,
+        limit=limit,
+        user_lat=user_lat,
+        user_lon=user_lon,
+        radius_km=radius_km,
     )
 
 
