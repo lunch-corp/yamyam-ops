@@ -18,8 +18,11 @@ repos:
   rev: v0.9.9
   hooks:
     - id: ruff-format
+      args: ["--config", "backend/pyproject.toml"]
+
     - id: ruff
-      args: ["--fix"]
+      args: ["--fix", "--config", "backend/pyproject.toml"]
+
 
 - repo: https://github.com/astral-sh/uv-pre-commit
   rev: "0.8.3"  # Use the latest version

@@ -8,6 +8,9 @@ jobs:
   lint:
     name: Run Ruff linting
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +34,9 @@ jobs:
   uv-lock-check:
     name: Check if uv.lock is up to date
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
