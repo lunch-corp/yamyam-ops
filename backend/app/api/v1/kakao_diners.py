@@ -59,7 +59,7 @@ def filter_restaurants(
     diner_category_detail: list[str] | None = Query(
         None, description="세부 카테고리 (여러 개 가능)"
     ),
-    min_rating: float | None = Query(None, ge=0, le=5, description="최소 평점"),
+    min_review_count: int | None = Query(None, ge=0, description="최소 리뷰 개수"),
     user_lat: float | None = Query(
         None, ge=-90, le=90, description="사용자 위도 (거리 필터용)"
     ),
@@ -79,7 +79,7 @@ def filter_restaurants(
     **필터링 조건:**
     - 카테고리: 대/중/소/세부 카테고리로 필터링
     - 거리: 사용자 위치 기준 반경 내 검색 (user_lat, user_lon, radius_km 모두 필요)
-    - 평점: 최소 평점 이상만 조회
+    - 리뷰 수: 최소 리뷰 개수 이상만 조회
 
     **정렬:**
     - 기본 정렬: bayesian_score DESC (인기도 점수순)
@@ -95,7 +95,7 @@ def filter_restaurants(
         diner_category_middle=diner_category_middle,
         diner_category_small=diner_category_small,
         diner_category_detail=diner_category_detail,
-        min_rating=min_rating,
+        min_review_count=min_review_count,
         user_lat=user_lat,
         user_lon=user_lon,
         radius_km=radius_km,

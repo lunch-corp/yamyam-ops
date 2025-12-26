@@ -62,6 +62,67 @@ def add_column_if_not_exists(
         raise
 
 
+def check_column_type(table_name: str, column_name: str) -> str | None:
+    """컬럼의 데이터 타입 확인"""
+    try:
+        with db.get_cursor() as (cursor, conn):
+            query = """
+                SELECT data_type
+                FROM information_schema.columns
+                WHERE table_name = %s AND column_name = %s
+            """
+            cursor.execute(query, (table_name, column_name))
+            result = cursor.fetchone()
+            return result["data_type"] if result else None
+    except Exception as e:
+        logger.error(f"컬럼 타입 확인 중 오류 발생: {e}")
+        return None
+
+
+def migrate_diner_review_cnt_to_integer():
+    """diner_review_cnt 컬럼 타입을 VARCHAR에서 INTEGER로 변경"""
+    try:
+        # 테이블 존재 확인
+        if not check_column_exists("kakao_diner", "diner_review_cnt"):
+            logger.info("diner_review_cnt 컬럼이 존재하지 않습니다.")
+            return False
+
+        # 현재 타입 확인
+        current_type = check_column_type("kakao_diner", "diner_review_cnt")
+        
+        if current_type == "integer":
+            logger.info("diner_review_cnt 컬럼이 이미 INTEGER 타입입니다.")
+            return False
+        
+        if current_type != "character varying":
+            logger.warning(
+                f"diner_review_cnt 컬럼의 현재 타입이 {current_type}입니다. "
+                "VARCHAR 타입이 아니므로 마이그레이션을 건너뜁니다."
+            )
+            return False
+
+        # 컬럼 타입 변경
+        logger.info("diner_review_cnt 컬럼 타입을 INTEGER로 변경 중...")
+        with db.get_cursor() as (cursor, conn):
+            alter_sql = """
+                ALTER TABLE kakao_diner
+                ALTER COLUMN diner_review_cnt TYPE INTEGER
+                USING CASE
+                    WHEN diner_review_cnt IS NULL OR TRIM(diner_review_cnt) = '' THEN 0
+                    WHEN diner_review_cnt ~ '^[0-9]+\\.?[0-9]*$' THEN 
+                        CAST(CAST(diner_review_cnt AS NUMERIC) AS INTEGER)
+                    ELSE 0
+                END
+            """
+            cursor.execute(alter_sql)
+            conn.commit()
+            logger.info("diner_review_cnt 컬럼이 INTEGER 타입으로 변경되었습니다.")
+            return True
+    except Exception as e:
+        logger.error(f"diner_review_cnt 컬럼 타입 변경 중 오류 발생: {e}")
+        raise
+
+
 def check_index_exists(table_name: str, index_name: str) -> bool:
     """인덱스가 존재하는지 확인"""
     try:
@@ -237,6 +298,9 @@ def run_migrations():
                 nullable=migration["nullable"],
                 default_value=migration["default"],
             )
+
+        # diner_review_cnt 컬럼 타입 변경 (VARCHAR -> INTEGER)
+        migrate_diner_review_cnt_to_integer()
 
         # 성능 최적화 인덱스 생성
         create_performance_indexes()

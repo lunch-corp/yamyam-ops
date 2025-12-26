@@ -13,7 +13,7 @@ class KakaoDiner(Base, ULIDMixin):
     diner_tag = Column(Text)
     diner_menu_name = Column(Text)
     diner_menu_price = Column(Text)
-    diner_review_cnt = Column(String(50))
+    diner_review_cnt = Column(Integer)
     diner_review_avg = Column(Float)
     diner_blog_review_cnt = Column(Float)
     diner_review_tags = Column(Text)

@@ -62,9 +62,22 @@ class Settings(BaseSettings):
 
     # 데이터베이스 마이그레이션 설정
     run_migrations: bool = True  # 기본값: True (마이그레이션 실행)
+    
     # config path
     config_root_path: str = "/app/config/beta"
     node2vec_config_path: str = "/app/config/beta/models/graph/node2vec.yaml"
+
+    @field_validator("run_migrations", mode="before")
+    @classmethod
+    def parse_run_migrations(cls, v):
+        """RUN_MIGRATIONS 환경 변수를 bool로 변환"""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            # 문자열을 소문자로 변환하여 비교
+            return v.lower() in ("true", "1", "yes", "on")
+        # 기본값은 True
+        return True
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

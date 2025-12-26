@@ -9,7 +9,7 @@ class KakaoDinerBase(BaseModel):
     diner_tag: str | None = Field(None, description="음식점 태그")
     diner_menu_name: str | None = Field(None, description="대표 메뉴명")
     diner_menu_price: str | None = Field(None, description="메뉴 가격")
-    diner_review_cnt: str = Field(..., description="리뷰 개수 (문자열)")
+    diner_review_cnt: int = Field(..., ge=0, description="리뷰 개수")
     diner_review_avg: float = Field(..., ge=0, le=5, description="평균 평점")
     diner_blog_review_cnt: float = Field(..., ge=0, description="블로그 리뷰 개수")
     diner_review_tags: str | None = Field(None, description="리뷰 태그")
@@ -32,7 +32,7 @@ class KakaoDinerUpdate(BaseModel):
     diner_tag: str | None = None
     diner_menu_name: str | None = None
     diner_menu_price: str | None = None
-    diner_review_cnt: str | None = None
+    diner_review_cnt: int | None = None
     diner_review_avg: float | None = Field(None, ge=0, le=5)
     diner_blog_review_cnt: float | None = Field(None, ge=0)
     diner_review_tags: str | None = None
@@ -92,9 +92,9 @@ class KakaoDinerResponse(BaseModel):
     diner_tag: str | None
     diner_menu_name: str | None
     diner_menu_price: str | None
-    diner_review_cnt: str
+    diner_review_cnt: int
     diner_review_avg: float
-    diner_blog_review_cnt: float
+    diner_blog_review_cnt: float | None
     diner_review_tags: str | None
     diner_road_address: str | None
     diner_num_address: str | None

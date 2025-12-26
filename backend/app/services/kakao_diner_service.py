@@ -145,7 +145,7 @@ class KakaoDinerService(
         diner_category_middle: list[str] | None = None,
         diner_category_small: list[str] | None = None,
         diner_category_detail: list[str] | None = None,
-        min_rating: float | None = None,
+        min_review_count: int | None = None,
         user_lat: float | None = None,
         user_lon: float | None = None,
         radius_km: float | None = None,
@@ -161,7 +161,7 @@ class KakaoDinerService(
             diner_category_middle: 중분류 카테고리 필터 (여러 개 가능)
             diner_category_small: 소분류 카테고리 필터 (여러 개 가능)
             diner_category_detail: 세부 카테고리 필터 (여러 개 가능)
-            min_rating: 최소 평점 필터
+            min_review_count: 최소 리뷰 개수 필터
             user_lat: 사용자 위도 (거리 필터용)
             user_lon: 사용자 경도 (거리 필터용)
             radius_km: 반경 (km) - 기본 필터
@@ -205,10 +205,10 @@ class KakaoDinerService(
             conditions.append(f"diner_category_detail IN ({placeholders})")
             params.extend(diner_category_detail)
 
-        # 평점 필터
-        if min_rating is not None:
-            conditions.append("diner_review_avg >= %s")
-            params.append(min_rating)
+        # 리뷰 수 필터
+        if min_review_count is not None:
+            conditions.append("diner_review_cnt >= %s")
+            params.append(min_review_count)
 
         # 지역 필터 (ST_DWithin with geography - 정확한 미터 단위)
         if user_lat is not None and user_lon is not None and radius_km is not None:
@@ -760,7 +760,7 @@ class KakaoDinerService(
             diner_menu_price=row.get("diner_menu_price"),
             diner_review_cnt=row["diner_review_cnt"],
             diner_review_avg=row["diner_review_avg"],
-            diner_blog_review_cnt=row["diner_blog_review_cnt"],
+            diner_blog_review_cnt=row.get("diner_blog_review_cnt"),
             diner_review_tags=row.get("diner_review_tags"),
             diner_road_address=row.get("diner_road_address"),
             diner_num_address=row.get("diner_num_address"),
