@@ -89,11 +89,11 @@ def migrate_diner_review_cnt_to_integer():
 
         # 현재 타입 확인
         current_type = check_column_type("kakao_diner", "diner_review_cnt")
-        
+
         if current_type == "integer":
             logger.info("diner_review_cnt 컬럼이 이미 INTEGER 타입입니다.")
             return False
-        
+
         if current_type != "character varying":
             logger.warning(
                 f"diner_review_cnt 컬럼의 현재 타입이 {current_type}입니다. "
