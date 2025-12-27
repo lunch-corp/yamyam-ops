@@ -66,3 +66,19 @@ class PersonalRecResponse(BaseModel):
         ...,
         description="List of scores related to each diner_id",
     )
+
+
+class InitModelResponse(BaseModel):
+    message: str = Field(..., description="Status message")
+    status: str = Field(..., description="Status code (success/skipped)")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Successfully initialized user_cf model",
+                    "status": "success",
+                }
+            ]
+        }
+    }

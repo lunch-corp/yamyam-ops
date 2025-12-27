@@ -1,8 +1,9 @@
 import logging
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from app.schemas.recommendation import (
+    InitModelResponse,
     PersonalRecRequest,
     PersonalRecResponse,
     UserCFRequest,
@@ -54,3 +55,44 @@ async def get_personalized_ranked_diners(request: PersonalRecRequest):
         diner_ids=request.diner_ids,
     )
     return PersonalRecResponse(diner_ids=diner_ids, scores=scores)
+
+
+@router.post(
+    "/init",
+    response_model=InitModelResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Initialize user_cf model with CSV files",
+)
+async def initialize_user_cf(
+    review_csv: UploadFile = File(..., description="review.csv file"),
+    diner_csv: UploadFile = File(..., description="diner.csv file"),
+    reviewer_csv: UploadFile = File(..., description="reviewer.csv file"),
+    diner_category_csv: UploadFile = File(..., description="diner_category.csv file"),
+):
+    """
+    Initialize user_cf model by uploading CSV files.
+    If already initialized, this endpoint does nothing.
+    """
+    if recommendation_service.is_initialized:
+        logging.info("Model already initialized, skipping initialization")
+        return InitModelResponse(message="Model already initialized", status="skipped")
+
+    try:
+        # Initialize model with file objects directly
+        recommendation_service._init_models(
+            review_csv_file=review_csv.file,
+            diner_csv_file=diner_csv.file,
+            reviewer_csv_file=reviewer_csv.file,
+            diner_category_csv_file=diner_category_csv.file,
+        )
+
+        return InitModelResponse(
+            message="Successfully initialized user_cf model", status="success"
+        )
+
+    except Exception as e:
+        logging.error(f"Failed to initialize model: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initialize model: {str(e)}",
+        )

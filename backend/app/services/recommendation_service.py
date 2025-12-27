@@ -1,6 +1,8 @@
 import logging
 import os
+from typing import IO, Optional
 
+import pandas as pd
 from scipy.sparse import csr_matrix
 from yamyam_lab.data.config import DataConfig
 from yamyam_lab.data.csr import CsrDatasetLoader
@@ -12,9 +14,6 @@ from app.api.v1.vector_db import vector_db_service
 from app.core.config import Settings
 from app.schemas.user import UserIdType
 from app.schemas.vector_db import VectorType
-from app.services.kakao_diner_service import KakaoDinerService
-from app.services.kakao_review_service import KakaoReviewService
-from app.services.kakao_reviewer_service import KakaoReviewerService
 
 
 class RecommendationService:
@@ -35,19 +34,58 @@ class RecommendationService:
         self.csr_matrix: csr_matrix = None
         self.user_mapping: dict = None
         self.diner_mapping: dict = None
+        self.is_initialized: bool = False
 
-    def _init_models(self) -> None:
-        self._load_dataset()
+    def _init_models(
+        self,
+        review_csv_file: Optional[IO],
+        diner_csv_file: Optional[IO],
+        reviewer_csv_file: Optional[IO],
+        diner_category_csv_file: Optional[IO],
+    ) -> None:
+        """
+        Initialize user_cf model. If already initialized, skip initialization.
+
+        Args:
+            review_csv_file: File-like object for review.csv
+            diner_csv_file: File-like object for diner.csv
+            reviewer_csv_file: File-like object for reviewer.csv
+            diner_category_csv_file: File-like object for diner_category.csv
+        """
+        if self.is_initialized:
+            logging.info("Model already initialized, skipping initialization")
+            return
+
+        self._load_dataset(
+            review_csv_file, diner_csv_file, reviewer_csv_file, diner_category_csv_file
+        )
         self._prepare_user_cf()
         self._remove_dataset()
+        self.is_initialized = True
         logging.info("Successfully initialized user_cf model")
 
-    def _load_dataset(self) -> None:
-        # at first, load all of the dataset.
-        # however, after creating csr_matrix, those data will be removed
-        self.review = KakaoReviewService().get_list(use_dataframe=True)
-        self.diner = KakaoDinerService().get_list(use_dataframe=True)
-        self.reviewer = KakaoReviewerService().get_list(use_dataframe=True)
+    def _load_dataset(
+        self,
+        review_csv_file: IO[bytes],
+        diner_csv_file: IO[bytes],
+        reviewer_csv_file: IO[bytes],
+        diner_category_csv_file: IO[bytes],
+    ) -> None:
+        """
+        Load dataset either from CSV files or from database.
+
+        Args:
+            review_csv_file: File-like object for review.csv
+            diner_csv_file: File-like object for diner.csv
+            reviewer_csv_file: File-like object for reviewer.csv
+            diner_category_csv_file: File-like object for diner_category.csv
+        """
+        # Load as csv file
+        logging.info("Loading data from CSV files")
+        self.review = pd.read_csv(review_csv_file)
+        self.diner = pd.read_csv(diner_csv_file)
+        self.reviewer = pd.read_csv(reviewer_csv_file)
+        self.diner_category = pd.read_csv(diner_category_csv_file)
 
         # convert string type to integer because their data types are defined as String.
         # refer to app/models for more detail defined table schema
@@ -55,14 +93,10 @@ class RecommendationService:
         self.review["review_id"] = self.review["review_id"].astype(int)
         self.reviewer["reviewer_id"] = self.reviewer["reviewer_id"].astype(int)
 
-        self.diner_category = self.diner[[self.DINER_IDX] + self.CATEGORY_COLUMNS]
-        self.diner = self.diner[
-            [col for col in self.diner.columns if col not in self.CATEGORY_COLUMNS]
-        ]
-        logging.info("Successfully loaded data from postgres db")
+        logging.info("Successfully loaded data")
 
     def _remove_dataset(self) -> None:
-        for attr in ["review", "diner", "reivewer", "diner_category"]:
+        for attr in ["review", "diner", "reviewer", "diner_category"]:
             if hasattr(self, attr):
                 delattr(self, attr)
         logging.info("Successfully deleted data")
@@ -119,12 +153,13 @@ class RecommendationService:
         Returns (int):
             Reviewer id using User Based CF.
         """
-        # initialize dataset if yet initialized
-        if self.csr_matrix is None:
-            logging.info("Loading dataset and user_cf model for first time")
-            self._init_models()
-        else:
-            logging.info("Using loaded user_cf model")
+        # check if model is initialized
+        if not self.is_initialized:
+            raise ValueError(
+                "User CF model is not initialized. Please call /rec/init endpoint first."
+            )
+
+        logging.info("Using loaded user_cf model")
 
         return self.user_cf.find_similar_users(
             liked_item_ids=liked_diner_ids,
