@@ -5,6 +5,7 @@
 import logging
 import random
 import re
+from datetime import datetime
 
 import pandas as pd
 from fastapi import HTTPException, status
@@ -15,6 +16,7 @@ from app.core.db import db
 from app.database.kakao_queries import (
     CHECK_KAKAO_DINER_EXISTS_BY_IDX,
     DELETE_KAKAO_DINER_BY_IDX,
+    GET_KAKAO_DINER_BY_ID,
     GET_KAKAO_DINER_BY_IDX,
     INSERT_KAKAO_DINER_BASIC,
     UPDATE_KAKAO_DINER_BY_IDX,
@@ -126,9 +128,17 @@ class KakaoDinerService(
         except Exception as e:
             self._handle_exception("creating kakao diner", e)
 
-    def get_by_id(self, diner_idx: int) -> KakaoDinerResponse:
-        """카카오 음식점 상세 조회 (diner_idx 기준)"""
-        result = self._execute_query(GET_KAKAO_DINER_BY_IDX, (diner_idx,))
+    def get_by_id(self, diner_id: str | int) -> KakaoDinerResponse:
+        """카카오 음식점 상세 조회 (ULID 또는 diner_idx 기준)"""
+        # ULID인지 diner_idx인지 판단
+        if isinstance(diner_id, str) and not diner_id.isdigit():
+            # ULID로 조회
+            result = self._execute_query(GET_KAKAO_DINER_BY_ID, (diner_id,))
+        else:
+            # diner_idx로 조회
+            diner_idx = int(diner_id) if isinstance(diner_id, str) else diner_id
+            result = self._execute_query(GET_KAKAO_DINER_BY_IDX, (diner_idx,))
+        
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -149,7 +159,9 @@ class KakaoDinerService(
         user_lat: float | None = None,
         user_lon: float | None = None,
         radius_km: float | None = None,
+        address_keywords: list[str] | None = None,
         n: int | None = None,
+        check_datetime: datetime | None = None,
     ) -> list[FilteredDinerResponse]:
         """
         카카오 음식점 목록 조회 (필터링 및 정렬) - 최적화된 버전 (id, diner_idx, distance만 반환)
@@ -165,7 +177,9 @@ class KakaoDinerService(
             user_lat: 사용자 위도 (거리 필터용)
             user_lon: 사용자 경도 (거리 필터용)
             radius_km: 반경 (km) - 기본 필터
+            address_keywords: 주소 키워드 필터 (diner_road_address 또는 diner_num_address에 포함되는 키워드 리스트)
             n: 랜덤 샘플링 개수 (지정 시 필터링된 결과에서 n개 랜덤 샘플링, None이면 샘플링 안 함)
+            check_datetime: 영업시간 체크 날짜시간 (지정 시 영업 중인 음식점만 필터링) "2026-01-03T12:00:00"
 
         Returns:
             필터링된 음식점 최소 정보 목록 (id, diner_idx, distance)
@@ -217,6 +231,17 @@ class KakaoDinerService(
                 f"ST_SetSRID(ST_MakePoint({user_lon}, {user_lat}), 4326)::geography, {radius_km * 1000})"
             )
 
+        # 주소 키워드 필터 (diner_road_address 또는 diner_num_address에 키워드 포함)
+        if address_keywords:
+            address_conditions = []
+            for keyword in address_keywords:
+                address_conditions.append(
+                    "(diner_road_address ILIKE %s OR diner_num_address ILIKE %s)"
+                )
+                params.extend([f"%{keyword}%", f"%{keyword}%"])
+            # 여러 키워드는 OR 조건으로 결합
+            conditions.append(f"({' OR '.join(address_conditions)})")
+
         # 2. 쿼리 빌드
         # n이 지정되면, 필터링된 모든 결과를 가져온 후 Python에서 샘플링
         # n이 None이면 기본 정렬(bayesian_score DESC) 적용
@@ -236,14 +261,41 @@ class KakaoDinerService(
         if not results:
             return []
 
-        # 3. 랜덤 샘플링 처리
+        # 3. 영업시간 필터링 (check_datetime이 제공된 경우)
+        if check_datetime:
+            try:
+                from app.services.kakao_diner_open_hours_service import (
+                    KakaoDinerOpenHoursService,
+                )
+
+                open_hours_service = KakaoDinerOpenHoursService()
+                diner_idx_list = [row["diner_idx"] for row in results]
+                open_diner_idx_list = open_hours_service.filter_open_diners(
+                    diner_idx_list, check_datetime
+                )
+
+                # 영업 중인 음식점만 필터링
+                results = [
+                    row for row in results if row["diner_idx"] in open_diner_idx_list
+                ]
+
+                logger.info(
+                    f"영업시간 필터링 적용: {len(diner_idx_list)}개 → {len(results)}개"
+                )
+            except Exception as e:
+                logger.warning(f"영업시간 필터링 중 오류 발생: {e}, 필터링 생략")
+
+        if not results:
+            return []
+
+        # 4. 랜덤 샘플링 처리
         if n and len(results) > n:
             results = random.sample(results, n)
         elif n and len(results) <= n:
             # 결과가 n개 이하면 그대로 반환
             pass
 
-        # 4. FilteredDinerResponse로 변환
+        # 5. FilteredDinerResponse로 변환
         logger.debug(f"results: {len(results)}")
         return [
             FilteredDinerResponse(
@@ -395,7 +447,7 @@ class KakaoDinerService(
         diner_category_middle: list[str] | None = None,
         diner_category_small: list[str] | None = None,
         diner_category_detail: list[str] | None = None,
-        min_rating: float | None = None,
+        min_review_count: int | None = None,
         user_lat: float | None = None,
         user_lon: float | None = None,
         radius_km: float | None = None,
@@ -413,7 +465,7 @@ class KakaoDinerService(
             diner_category_middle: 중분류 카테고리 필터 (기본 필터, 여러 개 가능)
             diner_category_small: 소분류 카테고리 필터 (기본 필터, 여러 개 가능)
             diner_category_detail: 세부 카테고리 필터 (기본 필터, 여러 개 가능)
-            min_rating: 최소 평점 필터
+            min_review_count: 최소 리뷰 개수 필터
             user_lat: 사용자 위도 (거리 필터 및 정렬용)
             user_lon: 사용자 경도 (거리 필터 및 정렬용)
             radius_km: 반경 (km) - 기본 필터
@@ -482,10 +534,10 @@ class KakaoDinerService(
             conditions.append(f"diner_category_detail IN ({placeholders})")
             params.extend(diner_category_detail)
 
-        # 평점 필터
-        if min_rating is not None:
-            conditions.append("diner_review_avg >= %s")
-            params.append(min_rating)
+        # 리뷰 수 필터
+        if min_review_count is not None:
+            conditions.append("diner_review_cnt >= %s")
+            params.append(min_review_count)
 
         # 지역 필터 (ST_DWithin with geography - 정확한 미터 단위)
         if user_lat is not None and user_lon is not None and radius_km is not None:

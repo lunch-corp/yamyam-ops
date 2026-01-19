@@ -214,6 +214,37 @@ async def upload_reviews(
     return await upload_service.upload_reviews(file, dry_run)
 
 
+@router.post("/kakao/review-photos", tags=["uploads"], summary="리뷰 사진 정보 업로드")
+async def upload_review_photos(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> dict:
+    """
+    카카오 리뷰 사진 정보 업로드
+
+    review_photos.csv 파일을 업로드하여 리뷰 사진 정보를 등록합니다.
+    동일한 id가 이미 존재하는 경우 UPSERT로 새 데이터로 업데이트됩니다.
+
+    **필수 컬럼:**
+    - review_id: 리뷰 고유 ID (String, kakao_review.review_id와 일치해야 함)
+    - photo_url: 이미지 URL (Text)
+
+    **선택 컬럼:**
+    - original_photo_id: 원본 사진 ID (Integer, nullable)
+    - media_type: 미디어 타입 (String, 기본값: "PHOTO")
+    - status: 상태 (String, nullable)
+    - display_order: 표시 순서 (Integer, 기본값: 0)
+    - view_count: 조회수 (Integer, 기본값: 0)
+
+    **주의사항:**
+    - review_id는 kakao_review 테이블에 존재해야 합니다 (ForeignKey 제약조건)
+    - id는 ULID로 자동 생성됩니다
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_review_photos(file, dry_run)
+
+
 @router.post(
     "/kakao/restaurants/grade-bayesian",
     tags=["uploads"],
@@ -259,3 +290,95 @@ async def upload_restaurant_hidden_score(
     dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
     """
     return await upload_service.upload_diner_hidden_score(file, dry_run)
+
+
+@router.post(
+    "/kakao/restaurants/open-hours",
+    tags=["uploads"],
+    summary="음식점 영업시간 업로드",
+)
+async def upload_restaurant_open_hours(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> dict:
+    """
+    카카오 음식점 영업시간 업로드
+
+    diner_open_hours.csv 파일을 업로드하여 음식점 영업시간 정보를 등록합니다.
+    동일한 diner_idx와 day_of_week 조합이 이미 존재하는 경우 UPSERT로 새 데이터로 업데이트됩니다.
+
+    **필수 컬럼:**
+    - diner_idx: 음식점 고유 인덱스 (int)
+    - day_of_week: 요일 (int, 0=월요일, 1=화요일, ..., 6=일요일)
+    - is_open: 영업 여부 (bool)
+
+    **선택 컬럼:**
+    - start_time: 영업 시작 시간 (str, 'HH:MM:SS' 형식, nullable)
+    - end_time: 영업 종료 시간 (str, 'HH:MM:SS' 형식, nullable)
+    - description: 추가 설명 (str, nullable - '휴무일', '24시간 영업' 등)
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_diner_open_hours(file, dry_run)
+
+
+@router.post(
+    "/kakao/restaurants/menus-new",
+    tags=["uploads"],
+    summary="음식점 메뉴 목록 업로드 (새 테이블)",
+)
+async def upload_restaurant_menus_new(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> dict:
+    """
+    카카오 음식점 메뉴 목록 CSV 파일 업로드
+
+    **필수 컬럼:**
+    - diner_idx: 음식점 고유 인덱스 (int)
+    - name: 메뉴 이름 (str)
+    - product_id: 상품 ID (str)
+
+    **선택 컬럼:**
+    - price: 가격 (float)
+    - is_ai_mate: AI 메이트 메뉴 여부 (bool)
+    - photo_url: 메뉴 사진 URL (str)
+    - is_recommend: 추천 메뉴 여부 (bool)
+    - desc: 메뉴 설명 (str)
+    - mod_at: 수정 시각 (datetime)
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_diner_menus_new(file, dry_run)
+
+
+@router.post(
+    "/kakao/restaurants/ai-data",
+    tags=["uploads"],
+    summary="음식점 AI 데이터 업로드",
+)
+async def upload_restaurant_ai_data(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="실제 DB 작업 없이 검증만 수행"),
+) -> dict:
+    """
+    카카오 음식점 AI 데이터 CSV 파일 업로드
+
+    **필수 컬럼:**
+    - diner_idx: 음식점 고유 인덱스 (int)
+
+    **선택 컬럼:**
+    - ai_bottom_sheet_title: AI 생성 제목 (str)
+    - ai_bottom_sheet_summary: AI 생성 요약 (str)
+    - ai_bottom_sheet_sheets: AI 생성 시트 데이터 (JSON 문자열)
+    - ai_bottom_sheet_landing_url: 랜딩 URL (str)
+    - blog_summaries: 블로그 요약 데이터 (JSON 문자열)
+
+    **참고:**
+    - ai_bottom_sheet_sheets와 blog_summaries는 JSON 문자열 형식으로 제공되어야 합니다.
+    - all_keywords는 자동으로 생성됩니다 (JSONB 필드에서 keywords 추출).
+    - 동일한 diner_idx가 이미 존재하는 경우 UPSERT로 새 데이터로 업데이트됩니다.
+
+    dry_run=True인 경우 실제 DB 작업 없이 파일 검증만 수행합니다.
+    """
+    return await upload_service.upload_diner_ai_data(file, dry_run)

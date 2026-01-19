@@ -38,3 +38,6 @@ class KakaoDiner(Base, ULIDMixin):
     # Relationships
     reviews = relationship("KakaoReview", back_populates="diner")
     mappings = relationship("ItemKakaoMapping", back_populates="diner")
+    open_hours = relationship("KakaoDinerOpenHours", back_populates="diner")
+    menus = relationship("KakaoDinerMenu", back_populates="diner")
+    ai_data = relationship("KakaoDinerAIData", back_populates="diner", uselist=False)

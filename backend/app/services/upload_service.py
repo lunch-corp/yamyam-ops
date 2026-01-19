@@ -28,8 +28,12 @@ class UploadService:
             "diner_tags": kakao_queries.UPDATE_KAKAO_DINER_TAGS,
             "reviewers": kakao_queries.INSERT_KAKAO_REVIEWER,
             "reviews": kakao_queries.INSERT_KAKAO_REVIEW,
+            "review_photos": kakao_queries.INSERT_REVIEW_PHOTO,
             "diner_grade_bayesian": kakao_queries.UPDATE_KAKAO_DINER_GRADE_BAYESIAN,
             "diner_hidden_score": kakao_queries.UPDATE_KAKAO_DINER_HIDDEN_SCORE,
+            "diner_open_hours": kakao_queries.INSERT_KAKAO_DINER_OPEN_HOURS,
+            "diner_menus_new": kakao_queries.INSERT_KAKAO_DINER_MENU,
+            "diner_ai_data": kakao_queries.INSERT_KAKAO_DINER_AI_DATA_CSV,
         }
 
         # 설정 일관성 검증
@@ -243,6 +247,12 @@ class UploadService:
         """reviewers.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviewers", dry_run)
 
+    async def upload_review_photos(
+        self, file: UploadFile, dry_run: bool = False
+    ) -> dict:
+        """review_photos.csv 파일 업로드"""
+        return await self._upload_csv_file(file, "review_photos", dry_run)
+
     async def upload_reviews(self, file: UploadFile, dry_run: bool = False) -> dict:
         """reviews.csv 파일 업로드"""
         return await self._upload_csv_file(file, "reviews", dry_run)
@@ -258,6 +268,24 @@ class UploadService:
     ) -> dict:
         """diner_hidden_score.csv 파일 업로드"""
         return await self._upload_csv_file(file, "diner_hidden_score", dry_run)
+
+    async def upload_diner_open_hours(
+        self, file: UploadFile, dry_run: bool = False
+    ) -> dict:
+        """diner_open_hours.csv 파일 업로드"""
+        return await self._upload_csv_file(file, "diner_open_hours", dry_run)
+
+    async def upload_diner_menus_new(
+        self, file: UploadFile, dry_run: bool = False
+    ) -> dict:
+        """diner_menus_new.csv 파일 업로드 (새로운 메뉴 테이블용)"""
+        return await self._upload_csv_file(file, "diner_menus_new", dry_run)
+
+    async def upload_diner_ai_data(
+        self, file: UploadFile, dry_run: bool = False
+    ) -> dict:
+        """diner_ai_data.csv 파일 업로드 (AI 데이터)"""
+        return await self._upload_csv_file(file, "diner_ai_data", dry_run)
 
     def add_new_file_type(
         self,

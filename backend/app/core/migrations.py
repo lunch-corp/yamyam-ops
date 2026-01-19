@@ -260,6 +260,323 @@ def create_performance_indexes():
     logger.info("성능 최적화 인덱스 생성 완료")
 
 
+def create_kakao_diner_open_hours_table():
+    """kakao_diner_open_hours 테이블 생성 및 인덱스 추가"""
+    logger.info("kakao_diner_open_hours 테이블 생성 시작...")
+
+    try:
+        with db.get_cursor() as (cursor, conn):
+            # 테이블 존재 여부 확인
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'kakao_diner_open_hours'
+                ) AS exists;
+            """)
+            result = cursor.fetchone()
+            table_exists = result.get("exists", False) if result else False
+
+            if table_exists:
+                logger.info("kakao_diner_open_hours 테이블이 이미 존재합니다.")
+                
+                # UNIQUE 제약조건 또는 인덱스 확인
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_constraint 
+                        WHERE conrelid = 'kakao_diner_open_hours'::regclass
+                        AND contype = 'u'
+                    ) OR EXISTS (
+                        SELECT 1 FROM pg_indexes 
+                        WHERE tablename = 'kakao_diner_open_hours'
+                        AND indexdef LIKE '%UNIQUE%'
+                        AND indexdef LIKE '%diner_idx%'
+                        AND indexdef LIKE '%day_of_week%'
+                    ) AS exists;
+                """)
+                result = cursor.fetchone()
+                unique_exists = result.get("exists", False) if result else False
+                
+                if not unique_exists:
+                    # UNIQUE 제약조건 추가 시도
+                    try:
+                        cursor.execute("""
+                            ALTER TABLE kakao_diner_open_hours
+                            ADD CONSTRAINT kakao_diner_open_hours_diner_idx_day_of_week_unique
+                            UNIQUE (diner_idx, day_of_week);
+                        """)
+                        conn.commit()
+                        logger.info("UNIQUE 제약조건 추가 완료")
+                    except Exception as e:
+                        # 제약조건 추가 실패 시 UNIQUE 인덱스 생성 시도
+                        logger.warning(f"UNIQUE 제약조건 추가 실패, UNIQUE 인덱스 생성 시도: {e}")
+                        try:
+                            cursor.execute("""
+                                CREATE UNIQUE INDEX IF NOT EXISTS 
+                                idx_kakao_diner_open_hours_unique 
+                                ON kakao_diner_open_hours(diner_idx, day_of_week);
+                            """)
+                            conn.commit()
+                            logger.info("UNIQUE 인덱스 생성 완료")
+                        except Exception as e2:
+                            logger.error(f"UNIQUE 인덱스 생성도 실패: {e2}")
+                else:
+                    logger.info("UNIQUE 제약조건 또는 인덱스가 이미 존재합니다.")
+            else:
+                # 테이블 생성
+                cursor.execute("""
+                    CREATE TABLE kakao_diner_open_hours (
+                        id VARCHAR(26) PRIMARY KEY,
+                        diner_idx INTEGER NOT NULL,
+                        day_of_week INTEGER NOT NULL,
+                        is_open BOOLEAN NOT NULL DEFAULT TRUE,
+                        start_time TIME,
+                        end_time TIME,
+                        description TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        
+                        FOREIGN KEY (diner_idx) REFERENCES kakao_diner(diner_idx) ON DELETE CASCADE,
+                        CONSTRAINT kakao_diner_open_hours_diner_idx_day_of_week_unique
+                        UNIQUE(diner_idx, day_of_week)
+                    );
+                """)
+                conn.commit()
+                logger.info("kakao_diner_open_hours 테이블 생성 완료")
+
+            # 인덱스 생성
+            indexes = [
+                ("idx_open_hours_diner_idx", "diner_idx"),
+                ("idx_open_hours_day_of_week", "day_of_week"),
+                ("idx_open_hours_is_open", "is_open"),
+            ]
+
+            for index_name, column_name in indexes:
+                cursor.execute(f"""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_indexes 
+                        WHERE tablename = 'kakao_diner_open_hours' 
+                        AND indexname = '{index_name}'
+                    ) AS exists;
+                """)
+                result = cursor.fetchone()
+                index_exists = result.get("exists", False) if result else False
+
+                if not index_exists:
+                    cursor.execute(f"""
+                        CREATE INDEX {index_name} 
+                        ON kakao_diner_open_hours({column_name});
+                    """)
+                    conn.commit()
+                    logger.info(f"인덱스 {index_name} 생성 완료")
+                else:
+                    logger.info(f"인덱스 {index_name}은(는) 이미 존재합니다.")
+
+            logger.info("kakao_diner_open_hours 테이블 및 인덱스 생성 완료")
+
+    except Exception as e:
+        logger.error(f"kakao_diner_open_hours 테이블 생성 중 오류 발생: {e}")
+        raise
+
+
+def create_kakao_diner_menus_table():
+    """kakao_diner_menus 테이블 생성 및 인덱스 추가"""
+    logger.info("kakao_diner_menus 테이블 생성 시작...")
+
+    try:
+        with db.get_cursor() as (cursor, conn):
+            # 테이블 존재 여부 확인
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'kakao_diner_menus'
+                ) AS exists;
+            """)
+            result = cursor.fetchone()
+            table_exists = result.get("exists", False) if result else False
+
+            if table_exists:
+                logger.info("kakao_diner_menus 테이블이 이미 존재합니다.")
+            else:
+                # 테이블 생성
+                cursor.execute("""
+                    CREATE TABLE kakao_diner_menus (
+                        id VARCHAR(26) PRIMARY KEY,
+                        diner_idx INTEGER NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        product_id VARCHAR(255) NOT NULL,
+                        price DOUBLE PRECISION,
+                        is_ai_mate BOOLEAN,
+                        photo_url TEXT,
+                        is_recommend BOOLEAN,
+                        "desc" TEXT,
+                        mod_at TIMESTAMP WITH TIME ZONE,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        
+                        FOREIGN KEY (diner_idx) REFERENCES kakao_diner(diner_idx) ON DELETE CASCADE
+                    );
+                """)
+                conn.commit()
+                logger.info("kakao_diner_menus 테이블 생성 완료")
+
+            # 인덱스 생성
+            indexes = [
+                ("idx_menus_diner_idx", "diner_idx"),
+                ("idx_menus_product_id", "product_id"),
+                ("idx_menus_is_recommend", "is_recommend"),
+                ("idx_menus_is_ai_mate", "is_ai_mate"),
+            ]
+
+            for index_name, column_name in indexes:
+                cursor.execute(f"""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_indexes 
+                        WHERE tablename = 'kakao_diner_menus' 
+                        AND indexname = '{index_name}'
+                    ) AS exists;
+                """)
+                result = cursor.fetchone()
+                index_exists = result.get("exists", False) if result else False
+
+                if not index_exists:
+                    cursor.execute(f"""
+                        CREATE INDEX {index_name} 
+                        ON kakao_diner_menus({column_name});
+                    """)
+                    conn.commit()
+                    logger.info(f"인덱스 {index_name} 생성 완료")
+                else:
+                    logger.info(f"인덱스 {index_name}은(는) 이미 존재합니다.")
+
+            logger.info("kakao_diner_menus 테이블 및 인덱스 생성 완료")
+
+    except Exception as e:
+        logger.error(f"kakao_diner_menus 테이블 생성 중 오류 발생: {e}")
+        raise
+
+
+def create_kakao_diner_ai_data_table():
+    """kakao_diner_ai_data 테이블 생성"""
+    try:
+        with db.get_cursor() as (cursor, conn):
+            # 테이블 존재 여부 확인
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'kakao_diner_ai_data'
+                ) AS exists;
+            """)
+            result = cursor.fetchone()
+            table_exists = result.get("exists", False) if result else False
+
+            if not table_exists:
+                # 테이블 생성
+                cursor.execute("""
+                    CREATE TABLE kakao_diner_ai_data (
+                        id VARCHAR(26) PRIMARY KEY,
+                        diner_idx INTEGER NOT NULL UNIQUE,
+                        ai_bottom_sheet_title VARCHAR(500),
+                        ai_bottom_sheet_summary TEXT,
+                        ai_bottom_sheet_sheets JSONB,
+                        ai_bottom_sheet_landing_url TEXT,
+                        blog_summaries JSONB,
+                        all_keywords TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        
+                        FOREIGN KEY (diner_idx) REFERENCES kakao_diner(diner_idx) ON DELETE CASCADE
+                    );
+                """)
+                conn.commit()
+                logger.info("kakao_diner_ai_data 테이블 생성 완료")
+            else:
+                # 테이블이 이미 존재하는 경우, 누락된 컬럼 추가
+                logger.info("kakao_diner_ai_data 테이블이 이미 존재합니다. 누락된 컬럼 확인 중...")
+                
+                # 필수 컬럼 목록
+                required_columns = {
+                    "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+                    "updated_at": "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+                    "all_keywords": "TEXT",
+                }
+                
+                for column_name, column_type in required_columns.items():
+                    if not check_column_exists("kakao_diner_ai_data", column_name):
+                        logger.info(f"컬럼 {column_name} 추가 중...")
+                        add_column_if_not_exists(
+                            table_name="kakao_diner_ai_data",
+                            column_name=column_name,
+                            column_type=column_type,
+                            nullable=True,
+                        )
+                    else:
+                        logger.info(f"컬럼 {column_name}은(는) 이미 존재합니다.")
+
+            # 인덱스 생성
+            indexes = [
+                # diner_idx UNIQUE 인덱스 (이미 UNIQUE 제약조건으로 생성됨)
+                ("idx_ai_data_diner_idx", "diner_idx", None),
+                # JSONB GIN 인덱스 (jsonb_path_ops)
+                (
+                    "idx_ai_data_sheets_gin",
+                    "ai_bottom_sheet_sheets",
+                    "GIN (ai_bottom_sheet_sheets jsonb_path_ops)",
+                ),
+                (
+                    "idx_ai_data_blog_summaries_gin",
+                    "blog_summaries",
+                    "GIN (blog_summaries jsonb_path_ops)",
+                ),
+                # all_keywords GIN 인덱스 (tsvector)
+                (
+                    "idx_ai_data_keywords_gin",
+                    "all_keywords",
+                    "GIN (to_tsvector('simple', COALESCE(all_keywords, '')))",
+                ),
+            ]
+
+            for index_info in indexes:
+                if len(index_info) == 3:
+                    index_name, column_name, custom_index = index_info
+                else:
+                    index_name, column_name = index_info
+                    custom_index = None
+
+                cursor.execute(f"""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_indexes 
+                        WHERE tablename = 'kakao_diner_ai_data' 
+                        AND indexname = '{index_name}'
+                    ) AS exists;
+                """)
+                result = cursor.fetchone()
+                index_exists = result.get("exists", False) if result else False
+
+                if not index_exists:
+                    if custom_index:
+                        # 커스텀 인덱스 (GIN 등)
+                        cursor.execute(f"""
+                            CREATE INDEX {index_name} 
+                            ON kakao_diner_ai_data USING {custom_index};
+                        """)
+                    else:
+                        # 일반 인덱스
+                        cursor.execute(f"""
+                            CREATE INDEX {index_name} 
+                            ON kakao_diner_ai_data({column_name});
+                        """)
+                    conn.commit()
+                    logger.info(f"인덱스 {index_name} 생성 완료")
+                else:
+                    logger.info(f"인덱스 {index_name}은(는) 이미 존재합니다.")
+
+            logger.info("kakao_diner_ai_data 테이블 및 인덱스 생성 완료")
+
+    except Exception as e:
+        logger.error(f"kakao_diner_ai_data 테이블 생성 중 오류 발생: {e}")
+        raise
+
+
 def run_migrations():
     """모든 마이그레이션 실행"""
     logger.info("데이터베이스 마이그레이션 시작...")
@@ -304,6 +621,15 @@ def run_migrations():
 
         # 성능 최적화 인덱스 생성
         create_performance_indexes()
+
+        # kakao_diner_open_hours 테이블 생성
+        create_kakao_diner_open_hours_table()
+
+        # kakao_diner_menus 테이블 생성
+        create_kakao_diner_menus_table()
+
+        # kakao_diner_ai_data 테이블 생성
+        create_kakao_diner_ai_data_table()
 
         logger.info("데이터베이스 마이그레이션 완료")
     except Exception as e:

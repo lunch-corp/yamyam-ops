@@ -26,3 +26,4 @@ class KakaoReview(Base, ULIDMixin):
     # Relationships
     diner = relationship("KakaoDiner", back_populates="reviews")
     reviewer = relationship("KakaoReviewer", back_populates="reviews")
+    photos = relationship("ReviewPhoto", back_populates="review")

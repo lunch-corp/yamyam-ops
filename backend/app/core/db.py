@@ -67,9 +67,10 @@ class Database:
                         SELECT EXISTS (
                             SELECT 1 FROM pg_proc 
                             WHERE proname = 'set_ulid_defaults'
-                        );
+                        ) AS exists;
                     """)
-                    function_exists = cursor.fetchone()[0]
+                    result = cursor.fetchone()
+                    function_exists = result.get("exists", False) if result else False
 
                     if function_exists:
                         cursor.execute("SELECT set_ulid_defaults();")

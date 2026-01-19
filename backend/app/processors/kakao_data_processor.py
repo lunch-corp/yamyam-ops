@@ -3,6 +3,7 @@ Kakao 데이터 처리 전용 클래스 - 설정 기반 처리
 """
 
 import ast
+import json
 from collections.abc import Callable
 
 import pandas as pd
@@ -191,6 +192,33 @@ class KakaoDataProcessor:
             ],
             "query_name": "INSERT_KAKAO_REVIEW",
         },
+        "review_photos": {
+            "required_columns": [
+                "review_id",
+                "photo_url",
+            ],
+            "field_mappings": [
+                ("id", "ulid"),
+                ("review_id", "str"),
+                ("photo_url", "str"),
+                ("original_photo_id", "int_nullable"),
+                ("media_type", "str_default_photo"),
+                ("status", "str_optional"),
+                ("display_order", "int_default_zero"),
+                ("view_count", "int_default_zero"),
+            ],
+            "sql_fields": [
+                "id",
+                "review_id",
+                "photo_url",
+                "original_photo_id",
+                "media_type",
+                "status",
+                "display_order",
+                "view_count",
+            ],
+            "query_name": "INSERT_REVIEW_PHOTO",
+        },
         "diner_grade_bayesian": {
             "required_columns": [
                 "diner_idx",
@@ -223,6 +251,89 @@ class KakaoDataProcessor:
                 "diner_idx",
             ],
             "query_name": "UPDATE_KAKAO_DINER_HIDDEN_SCORE",
+        },
+        "diner_open_hours": {
+            "required_columns": [
+                "diner_idx",
+                "day_of_week",
+                "is_open",
+            ],
+            "field_mappings": [
+                ("id", "ulid"),
+                ("diner_idx", "int"),
+                ("day_of_week", "int"),
+                ("is_open", "bool"),
+                ("start_time", "time_str"),
+                ("end_time", "time_str"),
+                ("description", "str_optional"),
+            ],
+            "sql_fields": [
+                "id",
+                "diner_idx",
+                "day_of_week",
+                "is_open",
+                "start_time",
+                "end_time",
+                "description",
+            ],
+            "query_name": "INSERT_KAKAO_DINER_OPEN_HOURS",
+        },
+        "diner_menus_new": {
+            "required_columns": [
+                "diner_idx",
+                "name",
+                "product_id",
+            ],
+            "field_mappings": [
+                ("id", "ulid"),
+                ("diner_idx", "int"),
+                ("name", "str"),
+                ("product_id", "str"),
+                ("price", "float_nullable"),
+                ("is_ai_mate", "bool_nullable"),
+                ("photo_url", "str_optional"),
+                ("is_recommend", "bool_nullable"),
+                ("desc", "str_optional"),
+                ("mod_at", "datetime_str"),
+            ],
+            "sql_fields": [
+                "id",
+                "diner_idx",
+                "name",
+                "product_id",
+                "price",
+                "is_ai_mate",
+                "photo_url",
+                "is_recommend",
+                "desc",
+                "mod_at",
+            ],
+            "query_name": "INSERT_KAKAO_DINER_MENU",
+        },
+        "diner_ai_data": {
+            "required_columns": [
+                "diner_idx",
+            ],
+            "field_mappings": [
+                ("id", "ulid"),
+                ("diner_idx", "int"),
+                ("ai_bottom_sheet_title", "str_optional"),
+                ("ai_bottom_sheet_summary", "str_optional"),
+                ("ai_bottom_sheet_sheets", "json_str"),
+                ("ai_bottom_sheet_landing_url", "str_optional"),
+                ("blog_summaries", "json_str"),
+                # all_keywords는 서비스 레이어에서 자동 생성되므로 CSV에서 받지 않음
+            ],
+            "sql_fields": [
+                "id",
+                "diner_idx",
+                "ai_bottom_sheet_title",
+                "ai_bottom_sheet_summary",
+                "ai_bottom_sheet_sheets",
+                "ai_bottom_sheet_landing_url",
+                "blog_summaries",
+            ],
+            "query_name": "INSERT_KAKAO_DINER_AI_DATA_CSV",
         },
     }
 
@@ -278,6 +389,71 @@ class KakaoDataProcessor:
             )
         return value
 
+    @staticmethod
+    def convert_json_string(x):
+        """
+        CSV에서 읽힌 문자열을 파싱하여 dict/list로 변환한 후 JSON 문자열로 반환
+        - 작은따옴표/큰따옴표로 감싸진 JSON 문자열도 처리
+        - JSON 파싱 실패 시 ast.literal_eval 시도 (Python 리터럴 형식)
+        - 파싱된 dict/list를 JSON 문자열로 변환하여 반환
+        - 실패 시 None 반환
+
+        예: 
+        - '{"title": "test"}' -> '{"title": "test"}' (JSON 문자열)
+        - "[{'title': '제공 서비스'}]" -> '[{"title": "제공 서비스"}]' (JSON 문자열)
+        
+        주의: PostgreSQL JSONB 타입에 저장하기 위해 JSON 문자열로 반환합니다.
+        psycopg2가 자동으로 변환하지만, 명시적으로 JSON 문자열로 변환하는 것이 더 안전합니다.
+        """
+        # 결측치 처리
+        if pd.isnull(x) or x is None:
+            return None
+        
+        if not isinstance(x, str):
+            # 이미 dict/list인 경우 JSON 문자열로 변환
+            if isinstance(x, (dict, list)):
+                try:
+                    return json.dumps(x, ensure_ascii=False)
+                except (TypeError, ValueError):
+                    return None
+            return None
+
+        x_strip = x.strip()
+
+        if x_strip == "" or x_strip == "nan":
+            return None
+
+        # 작은따옴표나 큰따옴표로 감싸진 경우 처리
+        if (x_strip.startswith("'") and x_strip.endswith("'")) or \
+           (x_strip.startswith('"') and x_strip.endswith('"')):
+            x_strip = x_strip[1:-1]  # 따옴표 제거
+
+        # list / dict 형태만 시도
+        if (
+            (x_strip.startswith("{") and x_strip.endswith("}")) or
+            (x_strip.startswith("[") and x_strip.endswith("]"))
+        ):
+            parsed = None
+            # 먼저 JSON 파싱 시도 (JSON 형식인 경우)
+            try:
+                parsed = json.loads(x_strip)
+            except (ValueError, json.JSONDecodeError):
+                # JSON 파싱 실패 시 ast.literal_eval 시도 (Python 리터럴 형식인 경우)
+                try:
+                    parsed = ast.literal_eval(x_strip)
+                except (ValueError, SyntaxError):
+                    # 파싱 실패 시 None 반환
+                    return None
+            
+            # 파싱된 dict/list를 JSON 문자열로 변환
+            if parsed is not None:
+                try:
+                    return json.dumps(parsed, ensure_ascii=False)
+                except (TypeError, ValueError):
+                    return None
+
+        return None
+
     TYPE_CONVERTERS = {
         "str": lambda x: str(x) if pd.notnull(x) else None,
         "str_optional": lambda x: str(x) if pd.notnull(x) and str(x).strip() else None,
@@ -287,12 +463,22 @@ class KakaoDataProcessor:
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
         "float_default_zero": lambda x: float(x) if pd.notnull(x) else 0.0,
+        "str_default_photo": lambda x: str(x).strip() if pd.notnull(x) and str(x).strip() else "PHOTO",
+        "bool": lambda x: bool(x) if pd.notnull(x) else False,
+        "bool_nullable": lambda x: bool(x) if pd.notnull(x) else None,
         "date_str": lambda x: str(x).strip()
         if pd.notnull(x) and str(x).strip()
+        else None,
+        "datetime_str": lambda x: str(x).strip()
+        if pd.notnull(x) and str(x).strip() and str(x).lower() != "nan"
+        else None,
+        "time_str": lambda x: str(x).strip()
+        if pd.notnull(x) and str(x).strip() and str(x).lower() != "nan"
         else None,
         "list_to_comma": lambda x: KakaoDataProcessor.convert_list_string_to_comma_separated(
             x
         ),
+        "json_str": lambda x: KakaoDataProcessor.convert_json_string(x),
         "ulid": lambda x: generate_ulid(),  # ULID는 항상 새로 생성 (입력값 무시)
     }
 

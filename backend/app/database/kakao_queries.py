@@ -113,6 +113,17 @@ GET_KAKAO_DINER_BY_IDX = """
     FROM kakao_diner WHERE diner_idx = %s
 """
 
+GET_KAKAO_DINER_BY_ID = """
+    SELECT id, diner_idx, diner_name, diner_tag, diner_menu_name, diner_menu_price,
+           diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
+           diner_road_address, diner_num_address, diner_phone,
+           diner_lat, diner_lon, diner_open_time,
+           diner_grade, hidden_score, bayesian_score,
+           diner_category_large, diner_category_middle, diner_category_small, diner_category_detail,
+           crawled_at, updated_at
+    FROM kakao_diner WHERE id = %s
+"""
+
 GET_ALL_KAKAO_DINERS = """
     SELECT id, diner_idx, diner_name, diner_tag, diner_menu_name, diner_menu_price,
            diner_review_cnt, diner_review_avg, diner_blog_review_cnt, diner_review_tags,
@@ -380,10 +391,295 @@ COUNT_KAKAO_REVIEWS = """
     SELECT COUNT(*) FROM kakao_review
 """
 
+# ============================================
+# Review Photos Queries
+# ============================================
+
+# 리뷰 사진 생성
+INSERT_REVIEW_PHOTO = """
+    INSERT INTO review_photos (
+        id, review_id, photo_url, original_photo_id,
+        media_type, status, display_order, view_count
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (id) DO UPDATE SET
+        review_id = EXCLUDED.review_id,
+        photo_url = EXCLUDED.photo_url,
+        original_photo_id = EXCLUDED.original_photo_id,
+        media_type = EXCLUDED.media_type,
+        status = EXCLUDED.status,
+        display_order = EXCLUDED.display_order,
+        view_count = EXCLUDED.view_count
+    RETURNING id, review_id, photo_url, original_photo_id,
+              media_type, status, display_order, view_count, created_at
+"""
+
 COUNT_KAKAO_REVIEWS_BY_DINER = """
     SELECT COUNT(*) FROM kakao_review WHERE diner_idx = %s
 """
 
 COUNT_KAKAO_REVIEWS_BY_REVIEWER = """
     SELECT COUNT(*) FROM kakao_review WHERE reviewer_id = %s
+"""
+
+# ============================================
+# Kakao Diner Open Hours Queries
+# ============================================
+
+# 영업시간 정보 생성 (UPSERT)
+INSERT_KAKAO_DINER_OPEN_HOURS = """
+    INSERT INTO kakao_diner_open_hours (
+        id, diner_idx, day_of_week, is_open, start_time, end_time, description
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (diner_idx, day_of_week) DO UPDATE SET
+        is_open = EXCLUDED.is_open,
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
+        description = EXCLUDED.description,
+        updated_at = CURRENT_TIMESTAMP
+"""
+
+# 특정 음식점의 영업시간 조회
+GET_KAKAO_DINER_OPEN_HOURS_BY_DINER_IDX = """
+    SELECT id, diner_idx, day_of_week, is_open, start_time, end_time, description,
+           created_at, updated_at
+    FROM kakao_diner_open_hours
+    WHERE diner_idx = %s
+    ORDER BY day_of_week
+"""
+
+# 특정 음식점의 특정 요일 영업시간 조회
+GET_KAKAO_DINER_OPEN_HOURS_BY_DINER_AND_DAY = """
+    SELECT id, diner_idx, day_of_week, is_open, start_time, end_time, description,
+           created_at, updated_at
+    FROM kakao_diner_open_hours
+    WHERE diner_idx = %s AND day_of_week = %s
+"""
+
+# ID로 영업시간 조회
+GET_KAKAO_DINER_OPEN_HOURS_BY_ID = """
+    SELECT id, diner_idx, day_of_week, is_open, start_time, end_time, description,
+           created_at, updated_at
+    FROM kakao_diner_open_hours
+    WHERE id = %s
+"""
+
+# 영업시간 업데이트
+UPDATE_KAKAO_DINER_OPEN_HOURS_BY_ID = """
+    UPDATE kakao_diner_open_hours SET
+        diner_idx = %s,
+        day_of_week = %s,
+        is_open = %s,
+        start_time = %s,
+        end_time = %s,
+        description = %s,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = %s
+    RETURNING id, diner_idx, day_of_week, is_open, start_time, end_time, description,
+              created_at, updated_at
+"""
+
+# ID로 영업시간 삭제
+DELETE_KAKAO_DINER_OPEN_HOURS_BY_ID = """
+    DELETE FROM kakao_diner_open_hours WHERE id = %s RETURNING id
+"""
+
+# 특정 음식점의 영업시간 삭제
+DELETE_KAKAO_DINER_OPEN_HOURS_BY_DINER_IDX = """
+    DELETE FROM kakao_diner_open_hours WHERE diner_idx = %s
+"""
+
+# 특정 요일에 영업하는 음식점 조회
+GET_DINERS_OPEN_ON_DAY = """
+    SELECT DISTINCT diner_idx
+    FROM kakao_diner_open_hours
+    WHERE day_of_week = %s AND is_open = TRUE
+"""
+
+# 특정 시간대에 영업하는 음식점 조회
+GET_DINERS_OPEN_AT_TIME = """
+    SELECT DISTINCT diner_idx
+    FROM kakao_diner_open_hours
+    WHERE day_of_week = %s 
+      AND is_open = TRUE
+      AND start_time <= %s
+      AND end_time >= %s
+"""
+
+# ============================================
+# Kakao Diner Menu Queries
+# ============================================
+
+# 메뉴 생성 (UPSERT)
+INSERT_KAKAO_DINER_MENU = """
+    INSERT INTO kakao_diner_menus (
+        id, diner_idx, name, product_id, price, is_ai_mate, 
+        photo_url, is_recommend, "desc", mod_at
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (id) DO UPDATE SET
+        diner_idx = EXCLUDED.diner_idx,
+        name = EXCLUDED.name,
+        product_id = EXCLUDED.product_id,
+        price = EXCLUDED.price,
+        is_ai_mate = EXCLUDED.is_ai_mate,
+        photo_url = EXCLUDED.photo_url,
+        is_recommend = EXCLUDED.is_recommend,
+        "desc" = EXCLUDED."desc",
+        mod_at = EXCLUDED.mod_at,
+        updated_at = CURRENT_TIMESTAMP
+"""
+
+# 메뉴 ID로 조회
+GET_KAKAO_DINER_MENU_BY_ID = """
+    SELECT id, diner_idx, name, product_id, price, is_ai_mate,
+           photo_url, is_recommend, "desc", mod_at,
+           created_at, updated_at
+    FROM kakao_diner_menus
+    WHERE id = %s
+"""
+
+# diner_idx로 메뉴 목록 조회
+GET_KAKAO_DINER_MENUS_BY_DINER_IDX = """
+    SELECT id, diner_idx, name, product_id, price, is_ai_mate,
+           photo_url, is_recommend, "desc", mod_at,
+           created_at, updated_at
+    FROM kakao_diner_menus
+    WHERE diner_idx = %s
+    ORDER BY is_recommend DESC NULLS LAST, name
+"""
+
+# 메뉴 목록 조회 (필터링 지원)
+GET_KAKAO_DINER_MENUS_BASE = """
+    SELECT id, diner_idx, name, product_id, price, is_ai_mate,
+           photo_url, is_recommend, "desc", mod_at,
+           created_at, updated_at
+    FROM kakao_diner_menus
+"""
+
+# 메뉴 업데이트
+UPDATE_KAKAO_DINER_MENU_BY_ID = """
+    UPDATE kakao_diner_menus SET
+        diner_idx = %s,
+        name = %s,
+        product_id = %s,
+        price = %s,
+        is_ai_mate = %s,
+        photo_url = %s,
+        is_recommend = %s,
+        "desc" = %s,
+        mod_at = %s,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = %s
+    RETURNING id, diner_idx, name, product_id, price, is_ai_mate,
+              photo_url, is_recommend, "desc", mod_at,
+              created_at, updated_at
+"""
+
+# 메뉴 삭제
+DELETE_KAKAO_DINER_MENU_BY_ID = """
+    DELETE FROM kakao_diner_menus WHERE id = %s RETURNING id
+"""
+
+# diner_idx로 메뉴 삭제
+DELETE_KAKAO_DINER_MENUS_BY_DINER_IDX = """
+    DELETE FROM kakao_diner_menus WHERE diner_idx = %s
+"""
+
+# 메뉴 개수 조회
+COUNT_KAKAO_DINER_MENUS = """
+    SELECT COUNT(*) FROM kakao_diner_menus
+"""
+
+# diner_idx로 메뉴 개수 조회
+COUNT_KAKAO_DINER_MENUS_BY_DINER_IDX = """
+    SELECT COUNT(*) FROM kakao_diner_menus WHERE diner_idx = %s
+"""
+
+# ============================================
+# Kakao Diner AI Data Queries
+# ============================================
+
+# AI 데이터 생성 (UPSERT)
+INSERT_KAKAO_DINER_AI_DATA = """
+    INSERT INTO kakao_diner_ai_data (
+        id, diner_idx, ai_bottom_sheet_title, ai_bottom_sheet_summary,
+        ai_bottom_sheet_sheets, ai_bottom_sheet_landing_url, blog_summaries, all_keywords
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (diner_idx) DO UPDATE SET
+        ai_bottom_sheet_title = EXCLUDED.ai_bottom_sheet_title,
+        ai_bottom_sheet_summary = EXCLUDED.ai_bottom_sheet_summary,
+        ai_bottom_sheet_sheets = EXCLUDED.ai_bottom_sheet_sheets,
+        ai_bottom_sheet_landing_url = EXCLUDED.ai_bottom_sheet_landing_url,
+        blog_summaries = EXCLUDED.blog_summaries,
+        all_keywords = EXCLUDED.all_keywords,
+        updated_at = CURRENT_TIMESTAMP
+"""
+
+# AI 데이터 ID로 조회
+GET_KAKAO_DINER_AI_DATA_BY_ID = """
+    SELECT id, diner_idx, ai_bottom_sheet_title, ai_bottom_sheet_summary,
+           ai_bottom_sheet_sheets, ai_bottom_sheet_landing_url, blog_summaries, all_keywords,
+           created_at, updated_at
+    FROM kakao_diner_ai_data
+    WHERE id = %s
+"""
+
+# AI 데이터 diner_idx로 조회
+GET_KAKAO_DINER_AI_DATA_BY_DINER_IDX = """
+    SELECT id, diner_idx, ai_bottom_sheet_title, ai_bottom_sheet_summary,
+           ai_bottom_sheet_sheets, ai_bottom_sheet_landing_url, blog_summaries, all_keywords,
+           created_at, updated_at
+    FROM kakao_diner_ai_data
+    WHERE diner_idx = %s
+"""
+
+# AI 데이터 업데이트
+UPDATE_KAKAO_DINER_AI_DATA_BY_ID = """
+    UPDATE kakao_diner_ai_data SET
+        diner_idx = %s,
+        ai_bottom_sheet_title = %s,
+        ai_bottom_sheet_summary = %s,
+        ai_bottom_sheet_sheets = %s,
+        ai_bottom_sheet_landing_url = %s,
+        blog_summaries = %s,
+        all_keywords = %s,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = %s
+    RETURNING id, diner_idx, ai_bottom_sheet_title, ai_bottom_sheet_summary,
+              ai_bottom_sheet_sheets, ai_bottom_sheet_landing_url, blog_summaries, all_keywords,
+              created_at, updated_at
+"""
+
+# AI 데이터 삭제
+DELETE_KAKAO_DINER_AI_DATA_BY_ID = """
+    DELETE FROM kakao_diner_ai_data WHERE id = %s RETURNING id
+"""
+
+# AI 데이터 diner_idx로 삭제
+DELETE_KAKAO_DINER_AI_DATA_BY_DINER_IDX = """
+    DELETE FROM kakao_diner_ai_data WHERE diner_idx = %s RETURNING id
+"""
+
+# AI 데이터 개수 조회
+COUNT_KAKAO_DINER_AI_DATA = """
+    SELECT COUNT(*) FROM kakao_diner_ai_data
+"""
+
+# AI 데이터 CSV 업로드용 (UPSERT, all_keywords는 서비스에서 생성)
+# updated_at 컬럼이 없을 수 있으므로 조건부로 처리
+INSERT_KAKAO_DINER_AI_DATA_CSV = """
+    INSERT INTO kakao_diner_ai_data (
+        id, diner_idx, ai_bottom_sheet_title, ai_bottom_sheet_summary,
+        ai_bottom_sheet_sheets, ai_bottom_sheet_landing_url, blog_summaries
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (diner_idx) DO UPDATE SET
+        ai_bottom_sheet_title = EXCLUDED.ai_bottom_sheet_title,
+        ai_bottom_sheet_summary = EXCLUDED.ai_bottom_sheet_summary,
+        ai_bottom_sheet_sheets = EXCLUDED.ai_bottom_sheet_sheets,
+        ai_bottom_sheet_landing_url = EXCLUDED.ai_bottom_sheet_landing_url,
+        blog_summaries = EXCLUDED.blog_summaries
 """
