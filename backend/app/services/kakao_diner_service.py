@@ -138,7 +138,7 @@ class KakaoDinerService(
             # diner_idx로 조회
             diner_idx = int(diner_id) if isinstance(diner_id, str) else diner_id
             result = self._execute_query(GET_KAKAO_DINER_BY_IDX, (diner_idx,))
-        
+
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -35,6 +35,3 @@ class KakaoDinerAIData(Base, ULIDMixin):
 
     # Relationship
     diner = relationship("KakaoDiner", back_populates="ai_data")
-
-
-

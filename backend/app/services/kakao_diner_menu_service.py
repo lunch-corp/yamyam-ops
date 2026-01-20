@@ -86,9 +86,7 @@ class KakaoDinerMenuService(
         except Exception as e:
             self._handle_exception("creating kakao diner menu", e)
 
-    def get_by_id(
-        self, menu_id: str, dry_run: bool = False
-    ) -> KakaoDinerMenuResponse:
+    def get_by_id(self, menu_id: str, dry_run: bool = False) -> KakaoDinerMenuResponse:
         """메뉴 ID로 조회"""
         try:
             if dry_run:
@@ -302,4 +300,3 @@ class KakaoDinerMenuService(
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
-

@@ -127,7 +127,9 @@ class DinerRepository:
 
             if results:
                 logger.info(f"검색 성공: {len(results)}개")
-                return [r.model_dump() if hasattr(r, "model_dump") else r for r in results]
+                return [
+                    r.model_dump() if hasattr(r, "model_dump") else r for r in results
+                ]
 
         except Exception as e:
             logger.error(f"검색 실패: {e}")
@@ -162,9 +164,7 @@ class DinerRepository:
 
         return []
 
-    def _convert_filtered_to_full(
-        self, filtered_results: list
-    ) -> list[dict[str, Any]]:
+    def _convert_filtered_to_full(self, filtered_results: list) -> list[dict[str, Any]]:
         """
         FilteredDinerResponse를 전체 정보로 변환
 
@@ -180,7 +180,11 @@ class DinerRepository:
             try:
                 # FilteredDinerResponse는 id, diner_idx, distance만 포함
                 # 전체 정보를 조회하려면 get_by_id() 호출 필요
-                diner_idx = item.diner_idx if hasattr(item, "diner_idx") else item.get("diner_idx")
+                diner_idx = (
+                    item.diner_idx
+                    if hasattr(item, "diner_idx")
+                    else item.get("diner_idx")
+                )
 
                 if diner_idx:
                     full_info = self.db_service.get_by_id(diner_idx)

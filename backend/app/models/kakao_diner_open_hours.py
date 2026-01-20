@@ -2,7 +2,7 @@
 Kakao 음식점 영업시간 모델
 """
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Time, Boolean
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Text, Time
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 

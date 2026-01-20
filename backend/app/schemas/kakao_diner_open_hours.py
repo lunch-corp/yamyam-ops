@@ -15,7 +15,9 @@ class KakaoDinerOpenHoursBase(BaseModel):
     is_open: bool = Field(True, description="영업 여부")
     start_time: time | None = Field(None, description="영업 시작 시간")
     end_time: time | None = Field(None, description="영업 종료 시간")
-    description: str | None = Field(None, description="추가 설명 (휴무일, 24시간 영업 등)")
+    description: str | None = Field(
+        None, description="추가 설명 (휴무일, 24시간 영업 등)"
+    )
 
 
 class KakaoDinerOpenHoursCreate(KakaoDinerOpenHoursBase):
@@ -28,11 +30,15 @@ class KakaoDinerOpenHoursUpdate(BaseModel):
     """영업시간 업데이트 스키마 (모든 필드 optional)"""
 
     diner_idx: int | None = Field(None, description="카카오 음식점 고유 인덱스")
-    day_of_week: int | None = Field(None, ge=0, le=6, description="요일 (0=월요일, 6=일요일)")
+    day_of_week: int | None = Field(
+        None, ge=0, le=6, description="요일 (0=월요일, 6=일요일)"
+    )
     is_open: bool | None = Field(None, description="영업 여부")
     start_time: time | None = Field(None, description="영업 시작 시간")
     end_time: time | None = Field(None, description="영업 종료 시간")
-    description: str | None = Field(None, description="추가 설명 (휴무일, 24시간 영업 등)")
+    description: str | None = Field(
+        None, description="추가 설명 (휴무일, 24시간 영업 등)"
+    )
 
 
 class KakaoDinerOpenHoursResponse(KakaoDinerOpenHoursBase):
@@ -44,6 +50,3 @@ class KakaoDinerOpenHoursResponse(KakaoDinerOpenHoursBase):
 
     class Config:
         from_attributes = True
-
-
-

@@ -79,7 +79,9 @@ def filter_restaurants(
         ge=1,
         description="랜덤 샘플링 개수 (지정 시 필터링된 결과에서 n개 랜덤 반환, None이면 샘플링 안 함)",
     ),
-    check_datetime: str | None = Query(None, description="영업시간 체크 날짜시간 (ISO 형식)"),
+    check_datetime: str | None = Query(
+        None, description="영업시간 체크 날짜시간 (ISO 형식)"
+    ),
 ):
     """
     카카오 음식점 필터링 (지역/카테고리)
@@ -95,7 +97,7 @@ def filter_restaurants(
     **랜덤 샘플링:**
     - n이 지정되면, 필터링된 결과 중에서 n개를 랜덤하게 반환
     - n이 None이면 정렬된 순서대로 반환 (limit 적용)
-    
+
     **영업시간 필터링:**
     - check_datetime이 지정되면, 해당 시간에 영업 중인 음식점만 반환
     """
@@ -109,7 +111,7 @@ def filter_restaurants(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid datetime format: {check_datetime}. Use ISO format (e.g., 2026-01-03T12:00:00)",
             )
-    
+
     return diner_service.get_list_filtered(
         limit=limit,
         offset=offset,
@@ -382,9 +384,7 @@ def get_restaurant_menus(
     kakao_place_id: str,
     is_recommend: bool | None = Query(None, description="추천 메뉴 필터링"),
     is_ai_mate: bool | None = Query(None, description="AI 메이트 메뉴 필터링"),
-    limit: int | None = Query(
-        None, ge=1, le=1000, description="반환할 최대 레코드 수"
-    ),
+    limit: int | None = Query(None, ge=1, le=1000, description="반환할 최대 레코드 수"),
     offset: int | None = Query(None, ge=0, description="페이지네이션 오프셋"),
 ):
     """

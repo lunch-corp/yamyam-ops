@@ -17,14 +17,14 @@ class Settings(BaseSettings):
         """데이터베이스 URL 검증 및 로컬 환경 대응"""
         import os
         import socket
-        
+
         if not v or v.strip() == "":
             # DATABASE_URL이 없으면 환경 변수로부터 구성 시도
             postgres_user = os.getenv("POSTGRES_USER", "yamyam")
             postgres_password = os.getenv("POSTGRES_PASSWORD", "yamyam_pass")
             postgres_db = os.getenv("POSTGRES_DB", "yamyamdb")
             postgres_port = os.getenv("POSTGRES_PORT", "5432")
-            
+
             # 로컬 환경 감지: postgres 호스트명을 해석할 수 있는지 확인
             try:
                 socket.gethostbyname("postgres")
@@ -35,9 +35,9 @@ class Settings(BaseSettings):
                 host = "localhost"
                 # 로컬에서 실행 중인 경우 매핑된 포트 확인 (기본값 5477)
                 postgres_port = os.getenv("POSTGRES_PORT", "5477")
-            
+
             return f"postgresql://{postgres_user}:{postgres_password}@{host}:{postgres_port}/{postgres_db}"
-        
+
         # DATABASE_URL이 있는 경우, postgres 호스트명을 로컬 환경에서 해석 가능한지 확인
         if isinstance(v, str) and "@postgres:" in v:
             try:
@@ -47,10 +47,11 @@ class Settings(BaseSettings):
             except socket.gaierror:
                 # 로컬 환경: postgres를 localhost로 변경하고 포트를 5477로 변경
                 import re
+
                 # postgres:5432 또는 postgres:${POSTGRES_PORT}를 localhost:5477로 변경
                 v = re.sub(r"@postgres:(\d+)", r"@localhost:5477", v)
                 return v
-        
+
         return v
 
     @field_validator("redis_url", mode="before")
@@ -59,7 +60,7 @@ class Settings(BaseSettings):
         """Redis URL 검증 및 로컬 환경 대응"""
         import os
         import socket
-        
+
         if not v or v.strip() == "":
             # 로컬 환경 감지: redis 호스트명을 해석할 수 있는지 확인
             try:
@@ -72,9 +73,9 @@ class Settings(BaseSettings):
                 host = "localhost"
                 # docker-compose.yml에서 매핑된 포트 확인 (기본값 6379)
                 port = os.getenv("REDIS_PORT", "6379")
-            
+
             return f"redis://{host}:{port}"
-        
+
         # Redis URL이 있는 경우, redis 호스트명을 로컬 환경에서 해석 가능한지 확인
         if isinstance(v, str) and "redis://redis:" in v:
             try:
@@ -85,7 +86,7 @@ class Settings(BaseSettings):
                 # 로컬 환경: redis를 localhost로 변경
                 v = v.replace("redis://redis:", "redis://localhost:")
                 return v
-        
+
         return v
 
     redis_max_batch_size: int = 1000  # 기본 배치 크기
@@ -129,12 +130,12 @@ class Settings(BaseSettings):
 
     # X API 인증 (X 봇용)
     # X Developer Portal에서 발급: https://developer.x.com/
-    
+
     # OAuth 2.0 User Context (트윗 발행용, 권장)
     x_oauth2_access_token: str | None = None  # OAuth 2.0 Access Token
     x_oauth2_refresh_token: str | None = None  # OAuth 2.0 Refresh Token
     x_oauth2_token_expires_at: str | None = None  # 토큰 만료 시간 (ISO 8601 형식)
-    
+
     # OAuth 2.0 Application-Only (읽기 전용)
     x_client_id: str | None = None  # X Client ID
     x_client_secret: str | None = None  # X Client Secret

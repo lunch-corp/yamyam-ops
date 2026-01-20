@@ -5,7 +5,6 @@
 import logging
 from typing import Optional
 
-from app.core.db import db
 from app.services.base_service import BaseService
 
 logger = logging.getLogger(__name__)
@@ -55,13 +54,17 @@ class ReviewPhotoService(BaseService):
             logger.debug(f"이미지 조회 쿼리 실행: diner_idx={diner_idx}")
             result = self._execute_query(GET_TOP_REVIEWER_PHOTO_BY_DINER, (diner_idx,))
             if result:
-                logger.info(f"이미지 선택 완료: diner_idx={diner_idx}, photo_url={result.get('photo_url', '')[:50]}..., view_count={result.get('view_count', 0)}")
+                logger.info(
+                    f"이미지 선택 완료: diner_idx={diner_idx}, photo_url={result.get('photo_url', '')[:50]}..., view_count={result.get('view_count', 0)}"
+                )
                 return result
             else:
                 logger.info(f"이미지 없음: diner_idx={diner_idx} (쿼리 결과 없음)")
                 return None
         except Exception as e:
-            logger.warning(f"이미지 조회 실패 (diner_idx={diner_idx}): {e}", exc_info=True)
+            logger.warning(
+                f"이미지 조회 실패 (diner_idx={diner_idx}): {e}", exc_info=True
+            )
             return None
 
     def get_photos_by_diner_idx(self, diner_idx: int) -> list[dict]:
@@ -106,7 +109,7 @@ class ReviewPhotoService(BaseService):
             """
             logger.debug(f"상위 {limit}개 이미지 조회: diner_idx={diner_idx}")
             results = self._execute_query_all(query, (diner_idx, limit))
-            
+
             if results:
                 logger.info(f"이미지 {len(results)}개 선택 완료: diner_idx={diner_idx}")
                 return results
@@ -126,7 +129,9 @@ class ReviewPhotoService(BaseService):
         """ID로 레코드 조회 (미구현)"""
         raise NotImplementedError("ReviewPhotoService.get_by_id is not implemented")
 
-    def get_list(self, skip: int = 0, limit: int = 100, dry_run: bool = False, **filters):
+    def get_list(
+        self, skip: int = 0, limit: int = 100, dry_run: bool = False, **filters
+    ):
         """레코드 목록 조회 (미구현)"""
         raise NotImplementedError("ReviewPhotoService.get_list is not implemented")
 
@@ -140,4 +145,6 @@ class ReviewPhotoService(BaseService):
 
     def _convert_to_response(self, row: dict):
         """데이터베이스 행을 응답 모델로 변환 (미구현)"""
-        raise NotImplementedError("ReviewPhotoService._convert_to_response is not implemented")
+        raise NotImplementedError(
+            "ReviewPhotoService._convert_to_response is not implemented"
+        )

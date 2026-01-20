@@ -398,17 +398,17 @@ class KakaoDataProcessor:
         - 파싱된 dict/list를 JSON 문자열로 변환하여 반환
         - 실패 시 None 반환
 
-        예: 
+        예:
         - '{"title": "test"}' -> '{"title": "test"}' (JSON 문자열)
         - "[{'title': '제공 서비스'}]" -> '[{"title": "제공 서비스"}]' (JSON 문자열)
-        
+
         주의: PostgreSQL JSONB 타입에 저장하기 위해 JSON 문자열로 반환합니다.
         psycopg2가 자동으로 변환하지만, 명시적으로 JSON 문자열로 변환하는 것이 더 안전합니다.
         """
         # 결측치 처리
         if pd.isnull(x) or x is None:
             return None
-        
+
         if not isinstance(x, str):
             # 이미 dict/list인 경우 JSON 문자열로 변환
             if isinstance(x, (dict, list)):
@@ -424,14 +424,14 @@ class KakaoDataProcessor:
             return None
 
         # 작은따옴표나 큰따옴표로 감싸진 경우 처리
-        if (x_strip.startswith("'") and x_strip.endswith("'")) or \
-           (x_strip.startswith('"') and x_strip.endswith('"')):
+        if (x_strip.startswith("'") and x_strip.endswith("'")) or (
+            x_strip.startswith('"') and x_strip.endswith('"')
+        ):
             x_strip = x_strip[1:-1]  # 따옴표 제거
 
         # list / dict 형태만 시도
-        if (
-            (x_strip.startswith("{") and x_strip.endswith("}")) or
-            (x_strip.startswith("[") and x_strip.endswith("]"))
+        if (x_strip.startswith("{") and x_strip.endswith("}")) or (
+            x_strip.startswith("[") and x_strip.endswith("]")
         ):
             parsed = None
             # 먼저 JSON 파싱 시도 (JSON 형식인 경우)
@@ -444,7 +444,7 @@ class KakaoDataProcessor:
                 except (ValueError, SyntaxError):
                     # 파싱 실패 시 None 반환
                     return None
-            
+
             # 파싱된 dict/list를 JSON 문자열로 변환
             if parsed is not None:
                 try:
@@ -463,7 +463,9 @@ class KakaoDataProcessor:
         "float_nullable": lambda x: float(x) if pd.notnull(x) else None,
         "int_default_zero": lambda x: int(x) if pd.notnull(x) else 0,
         "float_default_zero": lambda x: float(x) if pd.notnull(x) else 0.0,
-        "str_default_photo": lambda x: str(x).strip() if pd.notnull(x) and str(x).strip() else "PHOTO",
+        "str_default_photo": lambda x: str(x).strip()
+        if pd.notnull(x) and str(x).strip()
+        else "PHOTO",
         "bool": lambda x: bool(x) if pd.notnull(x) else False,
         "bool_nullable": lambda x: bool(x) if pd.notnull(x) else None,
         "date_str": lambda x: str(x).strip()

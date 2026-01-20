@@ -31,7 +31,9 @@ class KakaoDinerMenuUpdate(BaseModel):
     """메뉴 업데이트 스키마 (모든 필드 optional)"""
 
     diner_idx: int | None = Field(None, description="카카오 음식점 고유 인덱스")
-    name: str | None = Field(None, min_length=1, max_length=255, description="메뉴 이름")
+    name: str | None = Field(
+        None, min_length=1, max_length=255, description="메뉴 이름"
+    )
     product_id: str | None = Field(
         None, min_length=1, max_length=255, description="상품 ID"
     )
@@ -52,4 +54,3 @@ class KakaoDinerMenuResponse(KakaoDinerMenuBase):
 
     class Config:
         from_attributes = True
-

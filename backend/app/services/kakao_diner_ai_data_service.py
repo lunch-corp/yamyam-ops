@@ -81,7 +81,9 @@ class KakaoDinerAIDataService(
 
         # 중복 제거 및 공백으로 구분된 문자열로 변환
         if all_keywords:
-            unique_keywords = list(dict.fromkeys(all_keywords))  # 순서 유지하며 중복 제거
+            unique_keywords = list(
+                dict.fromkeys(all_keywords)
+            )  # 순서 유지하며 중복 제거
             return " ".join(str(kw) for kw in unique_keywords if kw)
 
         return None
@@ -92,7 +94,9 @@ class KakaoDinerAIDataService(
         """AI 데이터 생성"""
         try:
             if dry_run:
-                logger.info(f"[DRY RUN] Creating AI data for diner_idx: {data.diner_idx}")
+                logger.info(
+                    f"[DRY RUN] Creating AI data for diner_idx: {data.diner_idx}"
+                )
                 return KakaoDinerAIDataResponse(
                     id="dry_run_id",
                     diner_idx=data.diner_idx,
@@ -267,7 +271,9 @@ class KakaoDinerAIDataService(
             with db.get_cursor() as (cursor, conn):
                 # JSONB 데이터를 JSON 문자열로 변환
                 ai_bottom_sheet_sheets_json = (
-                    json.dumps(update_data["ai_bottom_sheet_sheets"], ensure_ascii=False)
+                    json.dumps(
+                        update_data["ai_bottom_sheet_sheets"], ensure_ascii=False
+                    )
                     if update_data["ai_bottom_sheet_sheets"]
                     else None
                 )
@@ -387,6 +393,3 @@ class KakaoDinerAIDataService(
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
-
-
-

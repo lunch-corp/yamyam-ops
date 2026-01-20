@@ -2,7 +2,16 @@
 Kakao 음식점 메뉴 모델
 """
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -43,4 +52,3 @@ class KakaoDinerMenu(Base, ULIDMixin):
             f"name={self.name}, "
             f"product_id={self.product_id})>"
         )
-

@@ -3,7 +3,7 @@
 """
 
 import logging
-from datetime import datetime, time
+from datetime import datetime
 
 from fastapi import HTTPException, status
 
@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 class KakaoDinerOpenHoursService(
     BaseService[
-        KakaoDinerOpenHoursCreate, KakaoDinerOpenHoursUpdate, KakaoDinerOpenHoursResponse
+        KakaoDinerOpenHoursCreate,
+        KakaoDinerOpenHoursUpdate,
+        KakaoDinerOpenHoursResponse,
     ]
 ):
     """카카오 음식점 영업시간 서비스"""
@@ -89,7 +91,8 @@ class KakaoDinerOpenHoursService(
         try:
             with db.get_cursor() as (cursor, conn):
                 cursor.execute(
-                    GET_KAKAO_DINER_OPEN_HOURS_BY_DINER_AND_DAY, (diner_idx, day_of_week)
+                    GET_KAKAO_DINER_OPEN_HOURS_BY_DINER_AND_DAY,
+                    (diner_idx, day_of_week),
                 )
                 result = cursor.fetchone()
                 return self._convert_to_response(result) if result else None
@@ -140,7 +143,10 @@ class KakaoDinerOpenHoursService(
                 return open_hours.start_time <= check_time <= open_hours.end_time
             else:
                 # 자정을 넘어가는 경우 (예: 23:00 ~ 02:00)
-                return check_time >= open_hours.start_time or check_time <= open_hours.end_time
+                return (
+                    check_time >= open_hours.start_time
+                    or check_time <= open_hours.end_time
+                )
 
         except Exception as e:
             logger.warning(
@@ -177,13 +183,13 @@ class KakaoDinerOpenHoursService(
                 FROM kakao_diner_open_hours
                 WHERE diner_idx IN ({placeholders}) AND day_of_week = %s
             """
-            
+
             open_diners = []
             with db.get_cursor() as (cursor, conn):
                 params = list(diner_idx_list) + [day_of_week]
                 cursor.execute(query, params)
                 results = cursor.fetchall()
-                
+
                 # 결과를 딕셔너리로 변환 (diner_idx -> 영업시간 정보)
                 # RealDictCursor를 사용하므로 딕셔너리 접근 가능
                 open_hours_map = {}
@@ -194,25 +200,25 @@ class KakaoDinerOpenHoursService(
                         "start_time": row["start_time"],
                         "end_time": row["end_time"],
                     }
-                
+
                 # 각 음식점의 영업시간 체크
                 for diner_idx in diner_idx_list:
                     if diner_idx not in open_hours_map:
                         # 영업시간 데이터가 없으면 영업 중으로 간주
                         open_diners.append(diner_idx)
                         continue
-                    
+
                     hours = open_hours_map[diner_idx]
-                    
+
                     # is_open이 False면 휴무일
                     if not hours["is_open"]:
                         continue
-                    
+
                     # start_time, end_time이 None이면 24시간 영업으로 간주
                     if hours["start_time"] is None or hours["end_time"] is None:
                         open_diners.append(diner_idx)
                         continue
-                    
+
                     # 영업시간 체크
                     # 자정을 넘어가는 경우 처리 (예: 23:00 ~ 02:00)
                     if hours["start_time"] <= hours["end_time"]:
@@ -221,7 +227,10 @@ class KakaoDinerOpenHoursService(
                             open_diners.append(diner_idx)
                     else:
                         # 자정을 넘어가는 경우 (예: 23:00 ~ 02:00)
-                        if check_time >= hours["start_time"] or check_time <= hours["end_time"]:
+                        if (
+                            check_time >= hours["start_time"]
+                            or check_time <= hours["end_time"]
+                        ):
                             open_diners.append(diner_idx)
 
             logger.info(
@@ -240,7 +249,9 @@ class KakaoDinerOpenHoursService(
         """영업시간 생성"""
         try:
             if dry_run:
-                logger.info(f"[DRY RUN] Creating open hours for diner_idx {data.diner_idx}")
+                logger.info(
+                    f"[DRY RUN] Creating open hours for diner_idx {data.diner_idx}"
+                )
                 return KakaoDinerOpenHoursResponse(
                     id="dry_run_id",
                     diner_idx=data.diner_idx,
@@ -310,7 +321,7 @@ class KakaoDinerOpenHoursService(
         """영업시간 목록 조회"""
         try:
             if dry_run:
-                logger.info(f"[DRY RUN] Getting open hours list")
+                logger.info("[DRY RUN] Getting open hours list")
                 return []
 
             # 기본 쿼리 (필터링 미지원, 필요시 확장 가능)
@@ -353,21 +364,37 @@ class KakaoDinerOpenHoursService(
             existing = self.get_by_id(open_hours_id)
 
             # 업데이트할 값 결정 (None이면 기존 값 유지)
-            diner_idx = data.diner_idx if data.diner_idx is not None else existing.diner_idx
+            diner_idx = (
+                data.diner_idx if data.diner_idx is not None else existing.diner_idx
+            )
             day_of_week = (
-                data.day_of_week if data.day_of_week is not None else existing.day_of_week
+                data.day_of_week
+                if data.day_of_week is not None
+                else existing.day_of_week
             )
             is_open = data.is_open if data.is_open is not None else existing.is_open
-            start_time = data.start_time if data.start_time is not None else existing.start_time
+            start_time = (
+                data.start_time if data.start_time is not None else existing.start_time
+            )
             end_time = data.end_time if data.end_time is not None else existing.end_time
             description = (
-                data.description if data.description is not None else existing.description
+                data.description
+                if data.description is not None
+                else existing.description
             )
 
             with db.get_cursor() as (cursor, conn):
                 cursor.execute(
                     UPDATE_KAKAO_DINER_OPEN_HOURS_BY_ID,
-                    (diner_idx, day_of_week, is_open, start_time, end_time, description, open_hours_id),
+                    (
+                        diner_idx,
+                        day_of_week,
+                        is_open,
+                        start_time,
+                        end_time,
+                        description,
+                        open_hours_id,
+                    ),
                 )
                 result = cursor.fetchone()
                 conn.commit()
@@ -409,4 +436,3 @@ class KakaoDinerOpenHoursService(
             raise
         except Exception as e:
             self._handle_exception("deleting kakao diner open hours", e)
-

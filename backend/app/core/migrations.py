@@ -278,7 +278,7 @@ def create_kakao_diner_open_hours_table():
 
             if table_exists:
                 logger.info("kakao_diner_open_hours 테이블이 이미 존재합니다.")
-                
+
                 # UNIQUE 제약조건 또는 인덱스 확인
                 cursor.execute("""
                     SELECT EXISTS (
@@ -295,7 +295,7 @@ def create_kakao_diner_open_hours_table():
                 """)
                 result = cursor.fetchone()
                 unique_exists = result.get("exists", False) if result else False
-                
+
                 if not unique_exists:
                     # UNIQUE 제약조건 추가 시도
                     try:
@@ -308,7 +308,9 @@ def create_kakao_diner_open_hours_table():
                         logger.info("UNIQUE 제약조건 추가 완료")
                     except Exception as e:
                         # 제약조건 추가 실패 시 UNIQUE 인덱스 생성 시도
-                        logger.warning(f"UNIQUE 제약조건 추가 실패, UNIQUE 인덱스 생성 시도: {e}")
+                        logger.warning(
+                            f"UNIQUE 제약조건 추가 실패, UNIQUE 인덱스 생성 시도: {e}"
+                        )
                         try:
                             cursor.execute("""
                                 CREATE UNIQUE INDEX IF NOT EXISTS 
@@ -491,15 +493,17 @@ def create_kakao_diner_ai_data_table():
                 logger.info("kakao_diner_ai_data 테이블 생성 완료")
             else:
                 # 테이블이 이미 존재하는 경우, 누락된 컬럼 추가
-                logger.info("kakao_diner_ai_data 테이블이 이미 존재합니다. 누락된 컬럼 확인 중...")
-                
+                logger.info(
+                    "kakao_diner_ai_data 테이블이 이미 존재합니다. 누락된 컬럼 확인 중..."
+                )
+
                 # 필수 컬럼 목록
                 required_columns = {
                     "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
                     "updated_at": "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
                     "all_keywords": "TEXT",
                 }
-                
+
                 for column_name, column_type in required_columns.items():
                     if not check_column_exists("kakao_diner_ai_data", column_name):
                         logger.info(f"컬럼 {column_name} 추가 중...")
