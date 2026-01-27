@@ -1,4 +1,7 @@
 import json
+import os
+import re
+import socket
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,8 +18,6 @@ class Settings(BaseSettings):
     @classmethod
     def validate_database_url(cls, v):
         """데이터베이스 URL 검증 및 로컬 환경 대응"""
-        import os
-        import socket
 
         if not v or v.strip() == "":
             # DATABASE_URL이 없으면 환경 변수로부터 구성 시도
@@ -45,9 +46,6 @@ class Settings(BaseSettings):
                 # Docker 환경: 그대로 사용
                 return v
             except socket.gaierror:
-                # 로컬 환경: postgres를 localhost로 변경하고 포트를 5477로 변경
-                import re
-
                 # postgres:5432 또는 postgres:${POSTGRES_PORT}를 localhost:5477로 변경
                 v = re.sub(r"@postgres:(\d+)", r"@localhost:5477", v)
                 return v
@@ -58,8 +56,6 @@ class Settings(BaseSettings):
     @classmethod
     def validate_redis_url(cls, v):
         """Redis URL 검증 및 로컬 환경 대응"""
-        import os
-        import socket
 
         if not v or v.strip() == "":
             # 로컬 환경 감지: redis 호스트명을 해석할 수 있는지 확인
